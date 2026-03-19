@@ -47,23 +47,27 @@ export async function POST(req: NextRequest) {
     });
     if (!menu) return badRequest("Geçersiz menü.");
 
-    // Public QR URL: /m/{restaurantId}/{menuId}?t={tableNumber}
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const tableParam = tableNumber ? `?t=${encodeURIComponent(tableNumber)}` : "";
-    const url = `${baseUrl}/m/${restaurantId}/${menuId}${tableParam}`;
 
+    // Önce placeholder URL ile oluştur, sonra gerçek ID ile güncelle
     const code = await prisma.qRCode.create({
       data: {
         restaurantId,
         menuId,
         tableNumber: tableNumber?.toString().trim() || null,
         label: label?.trim() || null,
-        url,
+        url: "", // geçici
       },
     });
 
+    const params = new URLSearchParams({ qr: String(code.id) });
+    if (tableNumber) params.set("t", tableNumber.toString().trim());
+    const url = `${baseUrl}/m/${restaurantId}/${menuId}?${params.toString()}`;
+
+    await prisma.qRCode.update({ where: { id: code.id }, data: { url } });
+
     return NextResponse.json<ApiResponse>(
-      { success: true, data: { code } },
+      { success: true, data: { code: { ...code, url } } },
       { status: 201 }
     );
   } catch (err) {

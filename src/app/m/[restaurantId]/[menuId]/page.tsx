@@ -51,9 +51,12 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
 
   if (!menu) notFound();
 
+  // Decimal → string (JSON serialization, client component'e geçiş için)
+  const serialized = JSON.parse(JSON.stringify(menu));
+
   return (
     <PublicMenuClient
-      menu={menu}
+      menu={serialized}
       tableNumber={tableNumber ?? null}
       qrId={qrId ?? null}
     />

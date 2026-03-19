@@ -6,7 +6,7 @@ export default async function QRCodesPage() {
   const session = await requireSession();
 
   const [codes, menus] = await Promise.all([
-    prisma.qRCode.findMany({
+    prisma.qrCode.findMany({
       where: { restaurantId: session.id },
       orderBy: { createdAt: "desc" },
       include: { menu: { select: { id: true, name: true } } },

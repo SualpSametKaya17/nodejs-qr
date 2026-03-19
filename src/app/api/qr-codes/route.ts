@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if (!restaurantId) return unauthorized();
 
   try {
-    const codes = await prisma.qRCode.findMany({
+    const codes = await prisma.qrCode.findMany({
       where: { restaurantId },
       orderBy: { createdAt: "desc" },
       select: {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
     // Önce placeholder URL ile oluştur, sonra gerçek ID ile güncelle
-    const code = await prisma.qRCode.create({
+    const code = await prisma.qrCode.create({
       data: {
         restaurantId,
         menuId,
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     if (tableNumber) params.set("t", tableNumber.toString().trim());
     const url = `${baseUrl}/m/${restaurantId}/${menuId}?${params.toString()}`;
 
-    await prisma.qRCode.update({ where: { id: code.id }, data: { url } });
+    await prisma.qrCode.update({ where: { id: code.id }, data: { url } });
 
     return NextResponse.json<ApiResponse>(
       { success: true, data: { code: { ...code, url } } },

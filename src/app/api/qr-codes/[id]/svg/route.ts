@@ -12,7 +12,7 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const code = await prisma.qRCode.findFirst({
+    const code = await prisma.qrCode.findFirst({
       where: { id: parseInt(id, 10), restaurantId },
     });
     if (!code) return notFound("QR kod bulunamadı.");

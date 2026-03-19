@@ -12,7 +12,7 @@ export async function POST(
   }
 
   try {
-    await prisma.qRCode.updateMany({
+    await prisma.qrCode.updateMany({
       where: { id: qrId, isActive: true },
       data: { scanCount: { increment: 1 } },
     });

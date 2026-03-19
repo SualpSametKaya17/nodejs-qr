@@ -9,7 +9,7 @@ import {
 import type { ApiResponse } from "@/types";
 
 async function owned(id: number, restaurantId: number) {
-  return prisma.qRCode.findFirst({ where: { id, restaurantId } });
+  return prisma.qrCode.findFirst({ where: { id, restaurantId } });
 }
 
 export async function PATCH(
@@ -24,7 +24,7 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const code = await prisma.qRCode.update({
+    const code = await prisma.qrCode.update({
       where: { id: existing.id },
       data: {
         label: body.label !== undefined ? body.label?.trim() || null : existing.label,
@@ -49,7 +49,7 @@ export async function DELETE(
   if (!existing) return notFound("QR kod bulunamadı.");
 
   try {
-    await prisma.qRCode.delete({ where: { id: existing.id } });
+    await prisma.qrCode.delete({ where: { id: existing.id } });
     return NextResponse.json<ApiResponse>({ success: true, message: "Silindi." });
   } catch (err) {
     console.error("[qr-codes DELETE]", err);

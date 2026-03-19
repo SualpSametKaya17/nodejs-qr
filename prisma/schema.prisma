@@ -36,12 +36,16 @@ model Restaurant {
   address      String?  @db.Text
   logoUrl      String?  @db.VarChar(500)
   coverUrl     String?  @db.VarChar(500)
-  currency     String   @default("TRY") @db.VarChar(3)
-  timezone     String   @default("Europe/Istanbul") @db.VarChar(50)
-  isActive     Boolean  @default(true)
-  trialEndsAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  currency           String   @default("TRY") @db.VarChar(3)
+  language           String   @default("tr") @db.VarChar(10)
+  timezone           String   @default("Europe/Istanbul") @db.VarChar(50)
+  primaryColor       String?  @db.VarChar(7)
+  subscriptionPlan   String   @default("free") @db.VarChar(50)
+  subscriptionStatus String   @default("active") @db.VarChar(50)
+  isActive           Boolean  @default(true)
+  trialEndsAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   plan     Plan        @relation(fields: [planId], references: [id])
   menus    Menu[]
@@ -117,11 +121,10 @@ model QrCode {
   id           Int      @id @default(autoincrement())
   restaurantId Int
   menuId       Int
-  label        String   @db.VarChar(100)
+  label        String?  @db.VarChar(100)
   tableNumber  String?  @db.VarChar(20)
-  qrImageUrl   String?  @db.VarChar(500)
-  shortUrl     String   @unique @db.VarChar(50)
-  scansCount   Int      @default(0)
+  url          String   @db.VarChar(1000)
+  scanCount    Int      @default(0)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 

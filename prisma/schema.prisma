@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ─── PLANS ───────────────────────────────────────────────────────────────────
+model Plan {
+  id               Int      @id @default(autoincrement())
+  name             String   @db.VarChar(100)
+  price            Decimal  @db.Decimal(10, 2)
+  maxMenus         Int      @default(1)
+  maxCategories    Int      @default(10)
+  maxItems         Int      @default(50)
+  maxQrCodes       Int      @default(1)
+  analyticsEnabled Boolean  @default(false)
+  customDomain     Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  restaurants Restaurant[]
+
+  @@map("plans")
+}
+
+// ─── RESTAURANTS ─────────────────────────────────────────────────────────────
+model Restaurant {
+  id           Int      @id @default(autoincrement())
+  planId       Int
+  name         String   @db.VarChar(255)
+  slug         String   @unique @db.VarChar(100)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @db.VarChar(255)
+  phone        String?  @db.VarChar(20)
+  address      String?  @db.Text
+  logoUrl      String?  @db.VarChar(500)
+  coverUrl     String?  @db.VarChar(500)
+  currency     String   @default("TRY") @db.VarChar(3)
+  timezone     String   @default("Europe/Istanbul") @db.VarChar(50)
+  isActive     Boolean  @default(true)
+  trialEndsAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  plan     Plan        @relation(fields: [planId], references: [id])
+  menus    Menu[]
+  qrCodes  QrCode[]
+  orders   Order[]
+  payments Payment[]
+  analytics Analytics[]
+  staff    Staff[]
+
+  @@map("restaurants")
+}
+
+// ─── MENUS ───────────────────────────────────────────────────────────────────
+model Menu {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  name         String   @db.VarChar(255)
+  description  String?  @db.Text
+  isActive     Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  categories Category[]
+  qrCodes    QrCode[]
+
+  @@map("menus")
+}
+
+// ─── CATEGORIES ──────────────────────────────────────────────────────────────
+model Category {
+  id          Int      @id @default(autoincrement())
+  menuId      Int
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  imageUrl    String?  @db.VarChar(500)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  menu  Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  items MenuItem[]
+
+  @@map("categories")
+}
+
+// ─── MENU ITEMS ──────────────────────────────────────────────────────────────
+model MenuItem {
+  id          Int      @id @default(autoincrement())
+  categoryId  Int
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  imageUrl    String?  @db.VarChar(500)
+  calories    Int?
+  allergens   String?  @db.VarChar(500)
+  isActive    Boolean  @default(true)
+  isPopular   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@map("menu_items")
+}
+
+// ─── QR CODES ────────────────────────────────────────────────────────────────
+model QrCode {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  menuId       Int
+  label        String   @db.VarChar(100)
+  tableNumber  String?  @db.VarChar(20)
+  qrImageUrl   String?  @db.VarChar(500)
+  shortUrl     String   @unique @db.VarChar(50)
+  scansCount   Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  menu       Menu        @relation(fields: [menuId], references: [id])
+  analytics  Analytics[]
+
+  @@map("qr_codes")
+}
+
+// ─── ORDERS ──────────────────────────────────────────────────────────────────
+model Order {
+  id           Int         @id @default(autoincrement())
+  restaurantId Int
+  tableNumber  String?     @db.VarChar(20)
+  customerNote String?     @db.Text
+  status       OrderStatus @default(PENDING)
+  totalAmount  Decimal     @db.Decimal(10, 2)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         Int     @id @default(autoincrement())
+  orderId    Int
+  menuItemId Int
+  quantity   Int     @default(1)
+  unitPrice  Decimal @db.Decimal(10, 2)
+  note       String? @db.Text
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("order_items")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+// ─── PAYMENTS ────────────────────────────────────────────────────────────────
+model Payment {
+  id              Int           @id @default(autoincrement())
+  restaurantId    Int
+  stripeSubId     String?       @db.VarChar(255)
+  stripeInvoiceId String?       @db.VarChar(255)
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("TRY") @db.VarChar(3)
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ─── ANALYTICS ───────────────────────────────────────────────────────────────
+model Analytics {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  qrCodeId     Int?
+  event        String   @db.VarChar(50)
+  metadata     String?  @db.Text
+  userAgent    String?  @db.VarChar(500)
+  ipAddress    String?  @db.VarChar(45)
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  qrCode     QrCode?    @relation(fields: [qrCodeId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, createdAt])
+  @@index([qrCodeId])
+  @@map("analytics")
+}
+
+// ─── STAFF ───────────────────────────────────────────────────────────────────
+model Staff {
+  id           Int       @id @default(autoincrement())
+  restaurantId Int
+  name         String    @db.VarChar(255)
+  email        String    @db.VarChar(255)
+  passwordHash String    @db.VarChar(255)
+  role         StaffRole @default(WAITER)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, email])
+  @@map("staff")
+}
+
+enum StaffRole {
+  ADMIN
+  MANAGER
+  WAITER
+  KITCHEN
+}

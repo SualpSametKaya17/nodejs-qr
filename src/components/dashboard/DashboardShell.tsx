@@ -79,6 +79,7 @@ export function DashboardShell({ session, menuUrl, children }: Props) {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         pendingOrders={pendingOrders.length}
+        role={session.role}
       />
       <div className="flex flex-col flex-1 min-w-0">
         <TopBar

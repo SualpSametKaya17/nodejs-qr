@@ -42,6 +42,9 @@ model Restaurant {
   timezone           String   @default("Europe/Istanbul") @db.VarChar(50)
   primaryColor       String?  @db.VarChar(7)
   menuStyle          String   @default("card") @db.VarChar(20)
+  role               String   @default("restaurant") @db.VarChar(20)
+  cartEnabled        Boolean  @default(true)
+  orderingEnabled    Boolean  @default(true)
   subscriptionPlan   String   @default("free") @db.VarChar(50)
   subscriptionStatus String   @default("active") @db.VarChar(50)
   isActive           Boolean  @default(true)
@@ -82,6 +85,7 @@ model Menu {
 model Category {
   id          Int      @id @default(autoincrement())
   menuId      Int
+  parentId    Int?
   name        String   @db.VarChar(255)
   description String?  @db.Text
   imageUrl    String?  @db.VarChar(500)
@@ -90,8 +94,10 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  menu  Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
-  items MenuItem[]
+  menu     Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryParent")
+  items    MenuItem[]
 
   @@map("categories")
 }

@@ -25,17 +25,12 @@ export default async function CategoriesPage({ searchParams }: Props) {
         where: { menuId: defaultMenu.id },
         orderBy: { sortOrder: "asc" },
         include: {
-          items: {
+          parent: { select: { id: true, name: true } },
+          children: {
             orderBy: { sortOrder: "asc" },
-            include: {
-              modifierGroups: {
-                include: {
-                  modifiers: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
-                },
-                orderBy: { sortOrder: "asc" },
-              },
-            },
+            include: { _count: { select: { items: true } } },
           },
+          _count: { select: { items: true } },
         },
       })
     : [];

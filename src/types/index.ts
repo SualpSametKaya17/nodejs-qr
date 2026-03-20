@@ -19,4 +19,5 @@ export type AuthSession = {
   name: string;
   slug: string;
   planId: number;
+  role: string; // "restaurant" | "superadmin"
 };

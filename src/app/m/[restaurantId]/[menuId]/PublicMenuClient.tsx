@@ -545,10 +545,10 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
 
       {/* ── Ürün detay modal ── */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setSelectedItem(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSelectedItem(null)}>
           <div className="absolute inset-0 bg-black/50" />
           <div
-            className="relative bg-white rounded-t-3xl w-full max-w-2xl max-h-[88vh] overflow-y-auto"
+            className="relative bg-white rounded-xl w-full max-w-2xl max-h-[88vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {selectedItem.imageUrl ? (

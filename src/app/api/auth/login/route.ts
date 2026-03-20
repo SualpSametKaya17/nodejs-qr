@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
         name: true,
         slug: true,
         planId: true,
+        role: true,
         passwordHash: true,
         isActive: true,
       },
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
       name: restaurant.name,
       slug: restaurant.slug,
       planId: restaurant.planId,
+      role: restaurant.role,
     });
 
     const { passwordHash: _, ...safeRestaurant } = restaurant;

@@ -15,7 +15,14 @@ function createAdapter() {
       database,
     });
   }
-  throw new Error(`DATABASE_URL geçersiz veya eksik: "${url}"`);
+  // Build time'da DATABASE_URL olmayabilir — bağlantı sadece runtime'da kurulur
+  return new PrismaMariaDb({
+    host: "localhost",
+    port: 3306,
+    user: "build",
+    password: "build",
+    database: "build",
+  });
 }
 
 const globalForPrisma = globalThis as unknown as {

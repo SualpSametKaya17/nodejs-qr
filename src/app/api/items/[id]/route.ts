@@ -41,6 +41,7 @@ export async function PATCH(
         allergens: body.allergens !== undefined ? body.allergens?.trim() || null : existing.allergens,
         isActive: body.isActive ?? existing.isActive,
         isPopular: body.isPopular ?? existing.isPopular,
+        isLiquid: body.isLiquid !== undefined ? body.isLiquid : existing.isLiquid,
         sortOrder: body.sortOrder ?? existing.sortOrder,
       },
     });

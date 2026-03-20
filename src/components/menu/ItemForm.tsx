@@ -12,6 +12,7 @@ interface ItemFormProps {
     calories?: number | null;
     allergens?: string | null;
     isPopular?: boolean;
+    isLiquid?: boolean;
   };
   onSubmit: (data: Record<string, unknown>) => Promise<void>;
   onCancel: () => void;
@@ -36,6 +37,7 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
         calories: form.get("calories"),
         allergens: form.get("allergens"),
         isPopular: form.get("isPopular") === "on",
+        isLiquid: form.get("isLiquid") === "on",
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Hata oluştu.");
@@ -114,15 +116,27 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
         />
       </div>
 
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          name="isPopular"
-          defaultChecked={initial?.isPopular ?? false}
-          className="w-4 h-4 text-blue-600 rounded border-gray-300"
-        />
-        <span className="text-sm text-gray-700">Popüler ürün olarak işaretle</span>
-      </label>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="isPopular"
+            defaultChecked={initial?.isPopular ?? false}
+            className="w-4 h-4 text-blue-600 rounded border-gray-300"
+          />
+          <span className="text-sm text-gray-700">⭐ Popüler ürün olarak işaretle</span>
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="isLiquid"
+            defaultChecked={initial?.isLiquid ?? false}
+            className="w-4 h-4 text-blue-600 rounded border-gray-300"
+          />
+          <span className="text-sm text-gray-700">💧 Sıvı ürün (içecek, çorba vb.) — dalga efekti gösterir</span>
+        </label>
+      </div>
 
       <div className="flex gap-3 pt-1">
         <button

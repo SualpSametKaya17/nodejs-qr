@@ -26,6 +26,7 @@ interface MenuItem {
   calories: number | null;
   allergens: string | null;
   isPopular: boolean;
+  isLiquid: boolean;
   modifierGroups: ItemModifierGroup[];
 }
 
@@ -82,6 +83,49 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   TRY: "₺", USD: "$", EUR: "€", GBP: "£",
 };
 
+// ─── Liquid wave styles (injected once) ──────────────────────────────────────
+const LIQUID_STYLES = `
+@keyframes liquidFlow {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes liquidBubble {
+  0%   { transform: translateY(0) scale(1); opacity: 0.7; }
+  50%  { opacity: 1; }
+  100% { transform: translateY(-28px) scale(0.5); opacity: 0; }
+}
+.liquid-wave-track { animation: liquidFlow 3s linear infinite; }
+.liquid-bubble-1   { animation: liquidBubble 2.2s ease-in infinite; }
+.liquid-bubble-2   { animation: liquidBubble 2.8s ease-in 0.6s infinite; }
+.liquid-bubble-3   { animation: liquidBubble 2.4s ease-in 1.3s infinite; }
+`;
+
+// ─── Liquid Wave Overlay ──────────────────────────────────────────────────────
+function LiquidWave({ color, height = 28 }: { color: string; height?: number }) {
+  const fill = color + "99"; // ~60% opacity
+  const wavePath = "M0 14 Q12.5 4 25 14 Q37.5 24 50 14 Q62.5 4 75 14 Q87.5 24 100 14 L100 28 L0 28 Z";
+  return (
+    <div
+      className="absolute bottom-0 left-0 right-0 overflow-hidden pointer-events-none select-none"
+      style={{ height }}
+    >
+      {/* Bubbles */}
+      <span className="liquid-bubble-1 absolute bottom-2 left-[20%] w-1.5 h-1.5 rounded-full" style={{ backgroundColor: fill }} />
+      <span className="liquid-bubble-2 absolute bottom-1 left-[55%] w-1 h-1 rounded-full" style={{ backgroundColor: fill }} />
+      <span className="liquid-bubble-3 absolute bottom-2 left-[75%] w-1.5 h-1.5 rounded-full" style={{ backgroundColor: fill }} />
+      {/* Wave — double-wide so it loops seamlessly */}
+      <div className="liquid-wave-track absolute bottom-0 left-0 flex" style={{ width: "200%" }}>
+        <svg viewBox="0 0 100 28" style={{ width: "50%", height }} fill={fill} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <path d={wavePath} />
+        </svg>
+        <svg viewBox="0 0 100 28" style={{ width: "50%", height }} fill={fill} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <path d={wavePath} />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 // ─── Card layout (default) ───────────────────────────────────────────────────
 function CardItem({
   item, primary, currencySymbol, onSelect, onAdd, cartQty, cartKey, onUpdateQty,
@@ -91,12 +135,26 @@ function CardItem({
   cartQty: number; cartKey: string; onUpdateQty: (key: string, delta: number) => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow lg:flex lg:flex-row">
-      {item.imageUrl && (
-        <button onClick={() => onSelect(item)} className="w-full block lg:w-44 lg:flex-shrink-0">
-          <img src={item.imageUrl} alt={item.name} className="w-full h-44 object-cover lg:h-full lg:min-h-[140px]" />
-        </button>
-      )}
+    <div
+      className="bg-white rounded-2xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow lg:flex lg:flex-row"
+      style={{ borderColor: item.isLiquid ? primary + "55" : "#f3f4f6" }}
+    >
+      {item.imageUrl ? (
+        <div className="relative w-full block lg:w-44 lg:flex-shrink-0">
+          <button onClick={() => onSelect(item)} className="w-full block">
+            <img src={item.imageUrl} alt={item.name} className="w-full h-44 object-cover lg:h-full lg:min-h-[140px]" />
+          </button>
+          {item.isLiquid && <LiquidWave color={primary} height={36} />}
+          {item.isLiquid && (
+            <span className="absolute top-2 left-2 text-sm leading-none drop-shadow-sm">💧</span>
+          )}
+        </div>
+      ) : item.isLiquid ? (
+        <div className="relative w-full lg:w-44 lg:flex-shrink-0 h-28 lg:h-auto lg:min-h-[140px]" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>
+          <div className="absolute inset-0 flex items-center justify-center text-4xl">💧</div>
+          <LiquidWave color={primary} height={32} />
+        </div>
+      ) : null}
       <div className="p-3.5 lg:flex lg:flex-col lg:justify-between lg:flex-1">
         <button onClick={() => onSelect(item)} className="w-full text-left">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -151,14 +209,25 @@ function GridItem({
   cartQty: number; cartKey: string; onUpdateQty: (key: string, delta: number) => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-      <button onClick={() => onSelect(item)} className="w-full block">
-        {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover" />
-        ) : (
-          <div className="w-full h-36 bg-gray-50 flex items-center justify-center text-4xl">🍽️</div>
+    <div
+      className="bg-white rounded-2xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow"
+      style={{ borderColor: item.isLiquid ? primary + "55" : "#f3f4f6" }}
+    >
+      <div className="relative w-full block">
+        <button onClick={() => onSelect(item)} className="w-full block">
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover" />
+          ) : item.isLiquid ? (
+            <div className="w-full h-36 flex items-center justify-center text-4xl" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>💧</div>
+          ) : (
+            <div className="w-full h-36 bg-gray-50 flex items-center justify-center text-4xl">🍽️</div>
+          )}
+        </button>
+        {item.isLiquid && <LiquidWave color={primary} height={28} />}
+        {item.isLiquid && (
+          <span className="absolute top-1.5 left-1.5 text-sm leading-none drop-shadow-sm">💧</span>
         )}
-      </button>
+      </div>
       <div className="p-2.5">
         <button onClick={() => onSelect(item)} className="w-full text-left">
           <p className="text-xs font-bold text-gray-900 line-clamp-1">{item.name}</p>
@@ -197,7 +266,15 @@ function ListItem({
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors lg:py-4">
       <button onClick={() => onSelect(item)} className="flex-1 flex items-center gap-3 text-left min-w-0">
         {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-cover flex-shrink-0 lg:w-20 lg:h-20 lg:rounded-2xl" />
+          <div className="relative flex-shrink-0 w-14 h-14 lg:w-20 lg:h-20 rounded-xl lg:rounded-2xl overflow-hidden">
+            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+            {item.isLiquid && <LiquidWave color={primary} height={18} />}
+          </div>
+        ) : item.isLiquid ? (
+          <div className="relative flex-shrink-0 w-14 h-14 lg:w-20 lg:h-20 rounded-xl lg:rounded-2xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>
+            <div className="w-full h-full flex items-center justify-center text-2xl">💧</div>
+            <LiquidWave color={primary} height={18} />
+          </div>
         ) : (
           <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 text-2xl lg:w-20 lg:h-20 lg:rounded-2xl">🍽️</div>
         )}
@@ -205,6 +282,7 @@ function ListItem({
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-semibold text-gray-900 truncate lg:text-base">{item.name}</span>
             {item.isPopular && <span className="text-xs" style={{ color: primary }}>⭐</span>}
+            {item.isLiquid && <span className="text-xs">💧</span>}
           </div>
           {item.description && (
             <p className="text-xs text-gray-400 truncate lg:whitespace-normal lg:line-clamp-2 mt-0.5">{item.description}</p>
@@ -463,6 +541,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <style>{LIQUID_STYLES}</style>
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 text-white shadow-md" style={{ backgroundColor: primary }}>
         <div className="max-w-6xl mx-auto px-4 pt-3 pb-2 flex items-center gap-3">
@@ -699,53 +778,71 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
 
               {/* Modifier grupları */}
               {selectedItem.modifierGroups.length > 0 && (
-                <div className="space-y-4 pt-1">
-                  {selectedItem.modifierGroups.map((group) => (
-                    <div key={group.id}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-semibold text-gray-800">{group.name}</span>
-                        {group.required && (
-                          <span className="text-xs bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full font-medium">Zorunlu</span>
-                        )}
-                        <span className="text-xs text-gray-400 ml-auto">
-                          {group.type === "single" ? "Tek seçim" : "Çoklu seçim"}
-                        </span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {group.modifiers.map((mod) => {
-                          const selected = (selectedMods[group.id] ?? []).includes(mod.id);
-                          return (
-                            <button
-                              key={mod.id}
-                              type="button"
-                              onClick={() => toggleMod(group, mod.id)}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
-                                selected
-                                  ? "border-current bg-opacity-10"
-                                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                              }`}
-                              style={selected ? { borderColor: primary, backgroundColor: primary + "12" } : {}}
-                            >
-                              <span
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                  selected ? "border-current" : "border-gray-300"
-                                }`}
-                                style={selected ? { borderColor: primary, backgroundColor: primary } : {}}
+                <div className="space-y-5 pt-1">
+                  {selectedItem.modifierGroups.map((group) => {
+                    const isSingle = group.type === "single";
+                    const selectedIds = selectedMods[group.id] ?? [];
+                    return (
+                      <div key={group.id}>
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <span className="text-sm font-bold text-gray-900">{group.name}</span>
+                          {group.required && (
+                            <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-semibold">Zorunlu</span>
+                          )}
+                          <span className="text-xs text-gray-400 ml-auto">
+                            {isSingle ? "Birini seç" : "Birden fazla seçebilirsin"}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {group.modifiers.map((mod) => {
+                            const isSelected = selectedIds.includes(mod.id);
+                            return (
+                              <label
+                                key={mod.id}
+                                className="flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 cursor-pointer transition-all active:scale-[0.98]"
+                                style={{
+                                  borderColor: isSelected ? primary : "#e5e7eb",
+                                  backgroundColor: isSelected ? primary + "10" : "#f9fafb",
+                                }}
                               >
-                                {selected && <span className="text-white text-xs font-bold">✓</span>}
-                              </span>
-                              <span className="flex-1 text-sm font-medium text-gray-800">{mod.name}</span>
-                              {Number(mod.price) > 0 && (
-                                <span className="text-sm font-semibold flex-shrink-0" style={{ color: primary }}>
-                                  +{currencySymbol}{Number(mod.price).toFixed(2)}
+                                {/* Hidden native input for accessibility */}
+                                <input
+                                  type={isSingle ? "radio" : "checkbox"}
+                                  name={`mod-group-${group.id}`}
+                                  value={mod.id}
+                                  checked={isSelected}
+                                  onChange={() => toggleMod(group, mod.id)}
+                                  className="sr-only"
+                                />
+                                {/* Custom indicator */}
+                                <span
+                                  className="flex-shrink-0 flex items-center justify-center transition-all"
+                                  style={{
+                                    width: 22, height: 22,
+                                    borderRadius: isSingle ? "50%" : 6,
+                                    border: `2.5px solid ${isSelected ? primary : "#d1d5db"}`,
+                                    backgroundColor: isSelected ? primary : "white",
+                                  }}
+                                >
+                                  {isSelected && (
+                                    <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+                                      <path d="M1 5L4.5 8.5L11 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  )}
                                 </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                                <span className="flex-1 text-sm font-medium text-gray-800 leading-tight">{mod.name}</span>
+                                {Number(mod.price) > 0 && (
+                                  <span className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>
+                                    +{currencySymbol}{Number(mod.price).toFixed(2)}
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 

@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   if (!restaurantId) return unauthorized();
 
   try {
-    const { categoryId, name, description, price, imageUrl, calories, allergens, isPopular } =
+    const { categoryId, name, description, price, imageUrl, calories, allergens, isPopular, isLiquid } =
       await req.json();
 
     if (!categoryId || !name?.trim() || price === undefined)
@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
         calories: calories ? parseInt(calories, 10) : null,
         allergens: allergens?.trim() || null,
         isPopular: isPopular ?? false,
+        isLiquid: isLiquid ?? false,
         sortOrder: count,
       },
     });

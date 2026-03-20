@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── PLANS ───────────────────────────────────────────────────────────────────
@@ -115,6 +114,7 @@ model MenuItem {
   allergens   String?  @db.VarChar(500)
   isActive    Boolean  @default(true)
   isPopular   Boolean  @default(false)
+  isLiquid    Boolean  @default(false)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

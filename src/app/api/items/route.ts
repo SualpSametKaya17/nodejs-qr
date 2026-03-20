@@ -3,6 +3,44 @@ import { prisma } from "@/lib/prisma";
 import { getRestaurantId, unauthorized, badRequest, serverError } from "@/lib/api-helpers";
 import type { ApiResponse } from "@/types";
 
+export async function GET(req: NextRequest) {
+  const restaurantId = getRestaurantId(req);
+  if (!restaurantId) return unauthorized();
+
+  const { searchParams } = req.nextUrl;
+  const menuId = searchParams.get("menuId") ? parseInt(searchParams.get("menuId")!, 10) : null;
+  const categoryId = searchParams.get("categoryId") ? parseInt(searchParams.get("categoryId")!, 10) : null;
+  const isActive = searchParams.get("isActive");
+
+  try {
+    const items = await prisma.menuItem.findMany({
+      where: {
+        category: {
+          menu: {
+            restaurantId,
+            ...(menuId ? { id: menuId } : {}),
+          },
+        },
+        ...(categoryId ? { categoryId } : {}),
+        ...(isActive === "true" ? { isActive: true } : isActive === "false" ? { isActive: false } : {}),
+      },
+      include: {
+        category: { select: { id: true, name: true } },
+        modifierGroups: {
+          include: { modifiers: { where: { isActive: true }, orderBy: { sortOrder: "asc" } } },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+      orderBy: [{ categoryId: "asc" }, { sortOrder: "asc" }],
+    });
+
+    return NextResponse.json<ApiResponse>({ success: true, data: { items } });
+  } catch (err) {
+    console.error("[items GET]", err);
+    return serverError();
+  }
+}
+
 export async function POST(req: NextRequest) {
   const restaurantId = getRestaurantId(req);
   if (!restaurantId) return unauthorized();

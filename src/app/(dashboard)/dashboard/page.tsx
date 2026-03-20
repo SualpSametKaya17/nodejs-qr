@@ -161,14 +161,14 @@ export default async function DashboardPage() {
         ) : (
           <div className="divide-y divide-gray-50">
             {recentOrders.map((order) => (
-              <div key={order.id} className="px-5 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-500">#{order.id}</span>
-                  <span className="text-sm text-gray-700">
+              <div key={order.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm text-gray-500 shrink-0">#{order.id}</span>
+                  <span className="text-sm text-gray-700 truncate">
                     {order.tableNumber ? `Masa ${order.tableNumber}` : "Masa belirtilmedi"}
                   </span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[order.status]}`}>
                     {STATUS_LABEL[order.status]}
                   </span>

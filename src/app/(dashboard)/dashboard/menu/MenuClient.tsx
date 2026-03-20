@@ -133,7 +133,7 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Menü Yönetimi</h1>
           <p className="text-sm text-gray-500 mt-1">Kategoriler ve ürünleri düzenle</p>
@@ -141,7 +141,7 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
         {selectedMenuId && (
           <button
             onClick={() => setModal({ type: "addCategory" })}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors sm:w-auto w-full"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -188,15 +188,15 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
           {categories.map((cat) => (
             <div key={cat.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
               {/* Kategori başlığı */}
-              <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-100">
-                <div>
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-100 gap-2">
+                <div className="min-w-0">
                   <span className="font-semibold text-gray-800">{cat.name}</span>
                   {cat.description && (
-                    <span className="ml-2 text-xs text-gray-400">{cat.description}</span>
+                    <span className="ml-2 text-xs text-gray-400 hidden sm:inline">{cat.description}</span>
                   )}
                   <span className="ml-2 text-xs text-gray-400">({cat.items.length} ürün)</span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => setModal({ type: "addItem", categoryId: cat.id })}
                     className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-medium transition-colors"
@@ -232,7 +232,7 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
               ) : (
                 <div className="divide-y divide-gray-50">
                   {cat.items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+                    <div key={item.id} className="flex items-center justify-between px-4 sm:px-5 py-3 hover:bg-gray-50 transition-colors gap-2">
                       <div className="flex items-center gap-3 min-w-0">
                         {item.imageUrl ? (
                           <img

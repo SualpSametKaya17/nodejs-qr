@@ -68,13 +68,20 @@ const NAV_ITEMS = [
   },
 ];
 
-export function Sidebar({ restaurantName, menuUrl }: { restaurantName: string; menuUrl: string | null }) {
+interface SidebarProps {
+  restaurantName: string;
+  menuUrl: string | null;
+  open: boolean;
+  onClose: () => void;
+}
+
+export function Sidebar({ restaurantName, menuUrl, open, onClose }: SidebarProps) {
   const pathname = usePathname();
 
-  return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+  const content = (
+    <>
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-200">
+      <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,16 +91,25 @@ export function Sidebar({ restaurantName, menuUrl }: { restaurantName: string; m
           </div>
           <span className="font-semibold text-gray-900 text-sm">QR Menü</span>
         </div>
+        {/* Mobilde kapat butonu */}
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Restoran adı */}
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-4 py-3 border-b border-gray-100 shrink-0">
         <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Restoran</p>
         <p className="text-sm font-medium text-gray-800 truncate mt-0.5">{restaurantName}</p>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/dashboard"
@@ -104,6 +120,7 @@ export function Sidebar({ restaurantName, menuUrl }: { restaurantName: string; m
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 isActive
                   ? "bg-blue-50 text-blue-700 font-medium"
@@ -120,20 +137,46 @@ export function Sidebar({ restaurantName, menuUrl }: { restaurantName: string; m
       </nav>
 
       {/* Alt link: menüyü görüntüle */}
-      <div className="p-3 border-t border-gray-100">
+      <div className="p-3 border-t border-gray-100 shrink-0">
         <a
           href={menuUrl ?? "#"}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-3 py-2 text-xs text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
           Menüyü Görüntüle
         </a>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col shrink-0">
+        {content}
+      </aside>
+
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {content}
+      </aside>
+    </>
   );
 }

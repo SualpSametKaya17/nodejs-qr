@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 import type { AuthSession } from "@/types";
 
-export function TopBar({ session }: { session: AuthSession }) {
+interface TopBarProps {
+  session: AuthSession;
+  onMenuClick: () => void;
+}
+
+export function TopBar({ session, onMenuClick }: TopBarProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -13,16 +18,28 @@ export function TopBar({ session }: { session: AuthSession }) {
   }
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
-      <div />
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shrink-0">
+      {/* Hamburger - sadece mobilde */}
+      <button
+        onClick={onMenuClick}
+        className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+        aria-label="Menüyü aç"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
-      <div className="flex items-center gap-3">
-        <div className="text-right">
-          <p className="text-sm font-medium text-gray-900">{session.name}</p>
-          <p className="text-xs text-gray-500">{session.email}</p>
+      {/* Desktop'ta boş alan */}
+      <div className="hidden lg:block" />
+
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="text-right hidden sm:block">
+          <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">{session.name}</p>
+          <p className="text-xs text-gray-500 truncate max-w-[150px]">{session.email}</p>
         </div>
 
-        <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center">
+        <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
           <span className="text-sm font-semibold text-blue-700">
             {session.name.charAt(0).toUpperCase()}
           </span>
@@ -30,7 +47,7 @@ export function TopBar({ session }: { session: AuthSession }) {
 
         <button
           onClick={handleLogout}
-          className="ml-2 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           title="Çıkış yap"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

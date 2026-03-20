@@ -85,14 +85,14 @@ export function QRCodesClient({ initialCodes, menus, restaurantId }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">QR Kodlar</h1>
           <p className="text-sm text-gray-500 mt-1">Masalar için QR kod oluştur ve yönet</p>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors sm:w-auto w-full"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -102,7 +102,7 @@ export function QRCodesClient({ initialCodes, menus, restaurantId }: Props) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         {[
           { label: "Toplam Kod", value: codes.length },
           { label: "Aktif", value: codes.filter((c) => c.isActive).length },
@@ -129,7 +129,8 @@ export function QRCodesClient({ initialCodes, menus, restaurantId }: Props) {
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-5 py-3 font-medium text-gray-500">QR / Masa</th>
@@ -219,6 +220,7 @@ export function QRCodesClient({ initialCodes, menus, restaurantId }: Props) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { TopBar } from "@/components/dashboard/TopBar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
 export default async function DashboardLayout({
   children,
@@ -24,12 +23,8 @@ export default async function DashboardLayout({
     : null;
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Sidebar restaurantName={session.name} menuUrl={menuUrl} />
-      <div className="flex flex-col flex-1 min-w-0">
-        <TopBar session={session} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
+    <DashboardShell session={session} menuUrl={menuUrl}>
+      {children}
+    </DashboardShell>
   );
 }

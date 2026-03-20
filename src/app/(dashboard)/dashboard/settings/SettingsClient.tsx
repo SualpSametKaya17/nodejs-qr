@@ -144,7 +144,7 @@ export function SettingsClient({ restaurant }: Props) {
   ];
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl w-full">
       {/* Toast */}
       {toast && (
         <div
@@ -162,7 +162,7 @@ export function SettingsClient({ restaurant }: Props) {
       </div>
 
       {/* Abonelik bilgisi */}
-      <div className="bg-white border border-gray-200 rounded-xl px-6 py-4 flex items-center justify-between">
+      <div className="bg-white border border-gray-200 rounded-xl px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-gray-500">Hesap</p>
           <p className="font-medium text-gray-900">{restaurant.email}</p>
@@ -182,7 +182,7 @@ export function SettingsClient({ restaurant }: Props) {
       </div>
 
       {/* Sekmeler */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-full sm:w-fit">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -210,7 +210,7 @@ export function SettingsClient({ restaurant }: Props) {
                 className={inputCls()}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Telefon">
                 <input
                   name="phone"

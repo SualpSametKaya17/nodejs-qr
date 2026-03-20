@@ -14,12 +14,14 @@ export type PaginatedResponse<T> = ApiResponse<{
 }>;
 
 export type AuthSession = {
-  id: number;
+  id: number;         // restaurantId (hem restoran sahibi hem staff için)
   email: string;
   name: string;
   slug: string;
   planId: number;
-  role: string; // "restaurant" | "superadmin"
+  role: string;       // "restaurant" | "superadmin" | "staff"
+  staffRole?: string; // "ADMIN" | "MANAGER" | "WAITER" | "KITCHEN" (role==="staff" ise)
+  staffId?: number;   // staff kaydının kendi ID'si
 };
 
 export type CustomerSession = {

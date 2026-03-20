@@ -2,7 +2,7 @@ import { requireSession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { SettingsClient } from "./SettingsClient";
+import { StaffClient } from "./StaffClient";
 
 interface Props {
   searchParams: Promise<{ restaurantId?: string }>;
@@ -16,34 +16,20 @@ async function getEffectiveId(sessionId: number, role: string, searchParams: { r
   return c && !isNaN(parseInt(c, 10)) ? parseInt(c, 10) : sessionId;
 }
 
-export default async function SettingsPage({ searchParams }: Props) {
+export default async function StaffPage({ searchParams }: Props) {
   const session = await requireSession();
 
-  // Staff üyeleri ayarlara erişemez
-  if (session.role === "staff") redirect("/dashboard/orders");
+  // Sadece restoran sahibi ve süper admin erişebilir
+  if (session.role === "staff") redirect("/dashboard");
 
   const sp = await searchParams;
   const restaurantId = await getEffectiveId(session.id, session.role, sp);
 
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { id: restaurantId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      logoUrl: true,
-      primaryColor: true,
-      menuStyle: true,
-      address: true,
-      phone: true,
-      currency: true,
-      language: true,
-      subscriptionPlan: true,
-      subscriptionStatus: true,
-    },
+  const staff = await prisma.staff.findMany({
+    where: { restaurantId },
+    select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
   });
 
-  if (!restaurant) return null;
-
-  return <SettingsClient restaurant={restaurant} />;
+  return <StaffClient staff={staff} />;
 }

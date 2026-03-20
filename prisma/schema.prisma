@@ -116,6 +116,8 @@ model MenuItem {
   isActive    Boolean  @default(true)
   isPopular   Boolean  @default(false)
   isLiquid    Boolean  @default(false)
+  effectIcon  String?  @db.VarChar(10)
+  effectColor String?  @db.VarChar(7)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

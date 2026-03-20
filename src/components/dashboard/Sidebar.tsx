@@ -88,6 +88,21 @@ const NAV_ITEMS = [
   },
 ];
 
+// Hangi rollerin hangi sayfalara erişebileceği
+// role==="restaurant" veya "superadmin" → tümü
+// staff rollerine göre:
+function isNavAllowed(href: string, staffRole?: string): boolean {
+  if (!staffRole) return true; // restoran sahibi veya superadmin
+  if (staffRole === "ADMIN") return true;
+  if (staffRole === "MANAGER") {
+    const allowed = ["/dashboard/orders", "/dashboard/analytics", "/dashboard/qr-codes",
+      "/dashboard/menu", "/dashboard/categories", "/dashboard/items"];
+    return allowed.some((a) => href === a || href.startsWith(a + "/")) || href === "/dashboard";
+  }
+  // WAITER / KITCHEN: sadece siparişler ve genel bakış
+  return href === "/dashboard" || href === "/dashboard/orders";
+}
+
 interface SidebarProps {
   restaurantName: string;
   menuUrl: string | null;
@@ -95,10 +110,16 @@ interface SidebarProps {
   onClose: () => void;
   pendingOrders?: number;
   role?: string;
+  staffRole?: string;
 }
 
-export function Sidebar({ restaurantName, menuUrl, open, onClose, pendingOrders = 0, role }: SidebarProps) {
+export function Sidebar({ restaurantName, menuUrl, open, onClose, pendingOrders = 0, role, staffRole }: SidebarProps) {
   const pathname = usePathname();
+
+  const isStaff = role === "staff";
+  const visibleNav = NAV_ITEMS.filter((item) =>
+    isStaff ? isNavAllowed(item.href, staffRole) : true
+  );
 
   const content = (
     <>
@@ -132,7 +153,7 @@ export function Sidebar({ restaurantName, menuUrl, open, onClose, pendingOrders 
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {visibleNav.map((item) => {
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
@@ -162,6 +183,31 @@ export function Sidebar({ restaurantName, menuUrl, open, onClose, pendingOrders 
             </Link>
           );
         })}
+        {/* Personel linki — sadece restoran sahibi ve superadmin */}
+        {!isStaff && (() => {
+          const href = "/dashboard/staff";
+          const isActive = pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                isActive
+                  ? "bg-blue-50 text-blue-700 font-medium"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <span className={isActive ? "text-blue-600" : "text-gray-400"}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </span>
+              <span className="flex-1">Personel</span>
+            </Link>
+          );
+        })()}
         {/* Süper Admin linki */}
         {role === "superadmin" && (() => {
           const href = "/dashboard/admin";

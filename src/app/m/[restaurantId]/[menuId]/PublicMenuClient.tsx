@@ -27,6 +27,8 @@ interface MenuItem {
   allergens: string | null;
   isPopular: boolean;
   isLiquid: boolean;
+  effectIcon: string | null;
+  effectColor: string | null;
   modifierGroups: ItemModifierGroup[];
 }
 
@@ -101,7 +103,7 @@ const LIQUID_STYLES = `
 `;
 
 // ─── Liquid Wave Overlay ──────────────────────────────────────────────────────
-function LiquidWave({ color, height = 28 }: { color: string; height?: number }) {
+function LiquidWave({ color, height = 28 }: { color: string; height?: number; icon?: string }) {
   const fill = color + "99"; // ~60% opacity
   const wavePath = "M0 14 Q12.5 4 25 14 Q37.5 24 50 14 Q62.5 4 75 14 Q87.5 24 100 14 L100 28 L0 28 Z";
   return (
@@ -137,22 +139,22 @@ function CardItem({
   return (
     <div
       className="bg-white rounded-2xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow lg:flex lg:flex-row"
-      style={{ borderColor: item.isLiquid ? primary + "55" : "#f3f4f6" }}
+      style={{ borderColor: item.isLiquid ? (item.effectColor ?? primary) + "55" : "#f3f4f6" }}
     >
       {item.imageUrl ? (
         <div className="relative w-full block lg:w-44 lg:flex-shrink-0">
           <button onClick={() => onSelect(item)} className="w-full block">
             <img src={item.imageUrl} alt={item.name} className="w-full h-44 object-cover lg:h-full lg:min-h-[140px]" />
           </button>
-          {item.isLiquid && <LiquidWave color={primary} height={36} />}
+          {item.isLiquid && <LiquidWave color={item.effectColor ?? primary} height={36} />}
           {item.isLiquid && (
-            <span className="absolute top-2 left-2 text-sm leading-none drop-shadow-sm">💧</span>
+            <span className="absolute top-2 left-2 text-sm leading-none drop-shadow-sm">{item.effectIcon ?? "💧"}</span>
           )}
         </div>
       ) : item.isLiquid ? (
-        <div className="relative w-full lg:w-44 lg:flex-shrink-0 h-28 lg:h-auto lg:min-h-[140px]" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>
-          <div className="absolute inset-0 flex items-center justify-center text-4xl">💧</div>
-          <LiquidWave color={primary} height={32} />
+        <div className="relative w-full lg:w-44 lg:flex-shrink-0 h-28 lg:h-auto lg:min-h-[140px]" style={{ background: `linear-gradient(135deg, ${item.effectColor ?? primary}18 0%, ${item.effectColor ?? primary}08 100%)` }}>
+          <div className="absolute inset-0 flex items-center justify-center text-4xl">{item.effectIcon ?? "💧"}</div>
+          <LiquidWave color={item.effectColor ?? primary} height={32} />
         </div>
       ) : null}
       <div className="p-3.5 lg:flex lg:flex-col lg:justify-between lg:flex-1">
@@ -211,21 +213,21 @@ function GridItem({
   return (
     <div
       className="bg-white rounded-2xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow"
-      style={{ borderColor: item.isLiquid ? primary + "55" : "#f3f4f6" }}
+      style={{ borderColor: item.isLiquid ? (item.effectColor ?? primary) + "55" : "#f3f4f6" }}
     >
       <div className="relative w-full block">
         <button onClick={() => onSelect(item)} className="w-full block">
           {item.imageUrl ? (
             <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover" />
           ) : item.isLiquid ? (
-            <div className="w-full h-36 flex items-center justify-center text-4xl" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>💧</div>
+            <div className="w-full h-36 flex items-center justify-center text-4xl" style={{ background: `linear-gradient(135deg, ${item.effectColor ?? primary}18 0%, ${item.effectColor ?? primary}08 100%)` }}>{item.effectIcon ?? "💧"}</div>
           ) : (
             <div className="w-full h-36 bg-gray-50 flex items-center justify-center text-4xl">🍽️</div>
           )}
         </button>
-        {item.isLiquid && <LiquidWave color={primary} height={28} />}
+        {item.isLiquid && <LiquidWave color={item.effectColor ?? primary} height={28} />}
         {item.isLiquid && (
-          <span className="absolute top-1.5 left-1.5 text-sm leading-none drop-shadow-sm">💧</span>
+          <span className="absolute top-1.5 left-1.5 text-sm leading-none drop-shadow-sm">{item.effectIcon ?? "💧"}</span>
         )}
       </div>
       <div className="p-2.5">
@@ -268,12 +270,12 @@ function ListItem({
         {item.imageUrl ? (
           <div className="relative flex-shrink-0 w-14 h-14 lg:w-20 lg:h-20 rounded-xl lg:rounded-2xl overflow-hidden">
             <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-            {item.isLiquid && <LiquidWave color={primary} height={18} />}
+            {item.isLiquid && <LiquidWave color={item.effectColor ?? primary} height={18} />}
           </div>
         ) : item.isLiquid ? (
-          <div className="relative flex-shrink-0 w-14 h-14 lg:w-20 lg:h-20 rounded-xl lg:rounded-2xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${primary}18 0%, ${primary}08 100%)` }}>
-            <div className="w-full h-full flex items-center justify-center text-2xl">💧</div>
-            <LiquidWave color={primary} height={18} />
+          <div className="relative flex-shrink-0 w-14 h-14 lg:w-20 lg:h-20 rounded-xl lg:rounded-2xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${item.effectColor ?? primary}18 0%, ${item.effectColor ?? primary}08 100%)` }}>
+            <div className="w-full h-full flex items-center justify-center text-2xl">{item.effectIcon ?? "💧"}</div>
+            <LiquidWave color={item.effectColor ?? primary} height={18} />
           </div>
         ) : (
           <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 text-2xl lg:w-20 lg:h-20 lg:rounded-2xl">🍽️</div>
@@ -282,7 +284,7 @@ function ListItem({
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-semibold text-gray-900 truncate lg:text-base">{item.name}</span>
             {item.isPopular && <span className="text-xs" style={{ color: primary }}>⭐</span>}
-            {item.isLiquid && <span className="text-xs">💧</span>}
+            {item.isLiquid && <span className="text-xs">{item.effectIcon ?? "💧"}</span>}
           </div>
           {item.description && (
             <p className="text-xs text-gray-400 truncate lg:whitespace-normal lg:line-clamp-2 mt-0.5">{item.description}</p>
@@ -797,24 +799,17 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                           {group.modifiers.map((mod) => {
                             const isSelected = selectedIds.includes(mod.id);
                             return (
-                              <label
+                              <button
                                 key={mod.id}
-                                className="flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 cursor-pointer transition-all active:scale-[0.98]"
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); toggleMod(group, mod.id); }}
+                                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 text-left transition-all active:scale-[0.98]"
                                 style={{
                                   borderColor: isSelected ? primary : "#e5e7eb",
                                   backgroundColor: isSelected ? primary + "10" : "#f9fafb",
                                 }}
                               >
-                                {/* Hidden native input for accessibility */}
-                                <input
-                                  type={isSingle ? "radio" : "checkbox"}
-                                  name={`mod-group-${group.id}`}
-                                  value={mod.id}
-                                  checked={isSelected}
-                                  onChange={() => toggleMod(group, mod.id)}
-                                  className="sr-only"
-                                />
-                                {/* Custom indicator */}
+                                {/* Seçim göstergesi — radio (tek) veya checkbox (çoklu) */}
                                 <span
                                   className="flex-shrink-0 flex items-center justify-center transition-all"
                                   style={{
@@ -836,7 +831,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                                     +{currencySymbol}{Number(mod.price).toFixed(2)}
                                   </span>
                                 )}
-                              </label>
+                              </button>
                             );
                           })}
                         </div>

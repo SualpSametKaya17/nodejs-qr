@@ -17,6 +17,9 @@ interface Item {
   calories: number | null;
   allergens: string | null;
   isPopular: boolean;
+  isLiquid: boolean;
+  effectIcon: string | null;
+  effectColor: string | null;
   isActive: boolean;
   category: { id: number; name: string };
 }

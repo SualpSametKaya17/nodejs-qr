@@ -15,60 +15,99 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── 1. Restoran sahibi mi? ──────────────────────────────────────────────
     const restaurant = await prisma.restaurant.findUnique({
       where: { email },
       select: {
-        id: true,
-        email: true,
-        name: true,
-        slug: true,
-        planId: true,
-        role: true,
-        passwordHash: true,
-        isActive: true,
+        id: true, email: true, name: true, slug: true,
+        planId: true, role: true, passwordHash: true, isActive: true,
       },
     });
 
-    if (!restaurant || !restaurant.isActive) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, error: "E-posta veya şifre hatalı." },
-        { status: 401 }
+    if (restaurant && restaurant.isActive) {
+      const valid = await bcrypt.compare(password, restaurant.passwordHash);
+      if (!valid) {
+        return NextResponse.json<ApiResponse>(
+          { success: false, error: "E-posta veya şifre hatalı." },
+          { status: 401 }
+        );
+      }
+      const token = await signToken({
+        id: restaurant.id,
+        email: restaurant.email,
+        name: restaurant.name,
+        slug: restaurant.slug,
+        planId: restaurant.planId,
+        role: restaurant.role,
+      });
+      const { passwordHash: _, ...safe } = restaurant;
+      const response = NextResponse.json<ApiResponse>(
+        { success: true, data: { restaurant: safe } }
       );
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+      return response;
     }
 
-    const valid = await bcrypt.compare(password, restaurant.passwordHash);
-    if (!valid) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, error: "E-posta veya şifre hatalı." },
-        { status: 401 }
-      );
-    }
-
-    const token = await signToken({
-      id: restaurant.id,
-      email: restaurant.email,
-      name: restaurant.name,
-      slug: restaurant.slug,
-      planId: restaurant.planId,
-      role: restaurant.role,
+    // ── 2. Staff (personel) mi? ─────────────────────────────────────────────
+    const staff = await prisma.staff.findFirst({
+      where: { email, isActive: true },
+      include: {
+        restaurant: {
+          select: { id: true, name: true, slug: true, planId: true, isActive: true },
+        },
+      },
     });
 
-    const { passwordHash: _, ...safeRestaurant } = restaurant;
+    if (staff && staff.restaurant.isActive) {
+      const valid = await bcrypt.compare(password, staff.passwordHash);
+      if (!valid) {
+        return NextResponse.json<ApiResponse>(
+          { success: false, error: "E-posta veya şifre hatalı." },
+          { status: 401 }
+        );
+      }
+      // id = restaurantId → proxy'nin x-restaurant-id için kritik
+      const token = await signToken({
+        id: staff.restaurantId,
+        email: staff.email,
+        name: staff.name,
+        slug: staff.restaurant.slug,
+        planId: staff.restaurant.planId,
+        role: "staff",
+        staffRole: staff.role,
+        staffId: staff.id,
+      });
+      const response = NextResponse.json<ApiResponse>({
+        success: true,
+        data: {
+          restaurant: {
+            id: staff.restaurantId,
+            name: staff.restaurant.name,
+            role: "staff",
+            staffRole: staff.role,
+          },
+        },
+      });
+      response.cookies.set("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+      return response;
+    }
 
-    const response = NextResponse.json<ApiResponse>(
-      { success: true, data: { restaurant: safeRestaurant } },
-      { status: 200 }
+    return NextResponse.json<ApiResponse>(
+      { success: false, error: "E-posta veya şifre hatalı." },
+      { status: 401 }
     );
-
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
-
-    return response;
   } catch (err) {
     console.error("[login]", err);
     return NextResponse.json<ApiResponse>(

@@ -42,6 +42,8 @@ export async function PATCH(
         isActive: body.isActive ?? existing.isActive,
         isPopular: body.isPopular ?? existing.isPopular,
         isLiquid: body.isLiquid !== undefined ? body.isLiquid : existing.isLiquid,
+        effectIcon: body.effectIcon !== undefined ? body.effectIcon?.trim() || null : existing.effectIcon,
+        effectColor: body.effectColor !== undefined ? body.effectColor?.trim() || null : existing.effectColor,
         sortOrder: body.sortOrder ?? existing.sortOrder,
       },
     });

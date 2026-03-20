@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   if (!restaurantId) return unauthorized();
 
   try {
-    const { categoryId, name, description, price, imageUrl, calories, allergens, isPopular, isLiquid } =
+    const { categoryId, name, description, price, imageUrl, calories, allergens, isPopular, isLiquid, effectIcon, effectColor } =
       await req.json();
 
     if (!categoryId || !name?.trim() || price === undefined)
@@ -74,6 +74,8 @@ export async function POST(req: NextRequest) {
         allergens: allergens?.trim() || null,
         isPopular: isPopular ?? false,
         isLiquid: isLiquid ?? false,
+        effectIcon: effectIcon?.trim() || null,
+        effectColor: effectColor?.trim() || null,
         sortOrder: count,
       },
     });

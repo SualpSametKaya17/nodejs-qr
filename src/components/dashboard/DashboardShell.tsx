@@ -90,6 +90,7 @@ export function DashboardShell({ session, menuUrl, children, allRestaurants, sel
         onClose={() => setSidebarOpen(false)}
         pendingOrders={pendingOrders.length}
         role={session.role}
+        staffRole={session.staffRole}
       />
       <div className="flex flex-col flex-1 min-w-0">
         <TopBar

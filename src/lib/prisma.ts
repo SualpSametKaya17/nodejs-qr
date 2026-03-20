@@ -3,20 +3,19 @@ import { PrismaClient } from "@prisma/client";
 
 function createAdapter() {
   const url = process.env.DATABASE_URL ?? "";
-  // mysql://user:pass@host:port/db
-  const match = url.match(/^mysql:\/\/([^:]+):([^@]*)@([^:]+):(\d+)\/(.+)$/);
+  // mysql://user:pass@host:port/db or mysql://user:pass@host/db
+  const match = url.match(/^mysql:\/\/([^:]+):([^@]*)@([^:/]+)(?::(\d+))?\/(.+)$/);
   if (match) {
     const [, user, password, host, port, database] = match;
     return new PrismaMariaDb({
       host,
-      port: parseInt(port, 10),
+      port: port ? parseInt(port, 10) : 3306,
       user,
       password,
       database,
     });
   }
-  // Fallback: bağlantı string'i doğrudan ver
-  return new PrismaMariaDb({ host: "localhost", user: "root", password: "password", database: "qr_menu_saas" });
+  throw new Error(`DATABASE_URL geçersiz veya eksik: "${url}"`);
 }
 
 const globalForPrisma = globalThis as unknown as {
@@ -30,4 +29,4 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;

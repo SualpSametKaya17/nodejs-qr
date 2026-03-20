@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { ImageUpload } from "@/components/menu/ImageUpload";
 
 interface Restaurant {
   id: number;
@@ -68,6 +69,7 @@ export function SettingsClient({ restaurant }: Props) {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [color, setColor] = useState(restaurant.primaryColor ?? "#2563eb");
   const [menuStyle, setMenuStyle] = useState(restaurant.menuStyle ?? "card");
+  const [logoUrl, setLogoUrl] = useState(restaurant.logoUrl ?? "");
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -97,12 +99,11 @@ export function SettingsClient({ restaurant }: Props) {
   async function handleAppearanceSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
-    const form = new FormData(e.currentTarget);
     const res = await fetch("/api/restaurant", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        logoUrl: form.get("logoUrl"),
+        logoUrl: logoUrl || null,
         primaryColor: color,
         menuStyle,
       }),
@@ -266,14 +267,15 @@ export function SettingsClient({ restaurant }: Props) {
       {activeSection === "appearance" && (
         <SectionCard title="Görünüm" description="Menü sayfasının görsel kimliği">
           <form onSubmit={handleAppearanceSave} className="space-y-4">
-            <Field label="Logo URL">
-              <input
-                name="logoUrl"
-                type="url"
-                defaultValue={restaurant.logoUrl ?? ""}
-                placeholder="https://..."
-                className={inputCls()}
+            <Field label="Logo / İkon">
+              <ImageUpload
+                currentUrl={restaurant.logoUrl}
+                onUpload={(url) => setLogoUrl(url)}
+                shape="circle"
               />
+              {logoUrl && (
+                <p className="text-xs text-gray-400 mt-1 truncate">{logoUrl}</p>
+              )}
             </Field>
             <Field label="Ana Renk">
               <div className="flex items-center gap-3">

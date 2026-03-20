@@ -5,9 +5,11 @@ import { useState, useRef } from "react";
 interface Props {
   currentUrl: string | null;
   onUpload: (url: string) => void;
+  /** "circle" → yuvarlak önizleme (logo/ikon için), varsayılan dikdörtgen */
+  shape?: "circle" | "rect";
 }
 
-export function ImageUpload({ currentUrl, onUpload }: Props) {
+export function ImageUpload({ currentUrl, onUpload, shape = "rect" }: Props) {
   const [preview, setPreview] = useState<string | null>(currentUrl);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -49,16 +51,18 @@ export function ImageUpload({ currentUrl, onUpload }: Props) {
     if (inputRef.current) inputRef.current.value = "";
   }
 
+  const isCircle = shape === "circle";
+
   return (
-    <div className="space-y-2">
-      {preview && (
-        <div className="relative w-full h-32 rounded-xl overflow-hidden bg-gray-100">
+    <div className={`space-y-2 ${isCircle ? "flex flex-col items-start" : ""}`}>
+      {preview ? (
+        <div className={`relative bg-gray-100 overflow-hidden ${isCircle ? "w-24 h-24 rounded-full" : "w-full h-32 rounded-xl"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview} alt="preview" className="w-full h-full object-cover" />
           <button
             type="button"
             onClick={remove}
-            className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm transition-colors"
+            className={`absolute bg-black/60 hover:bg-black/80 text-white flex items-center justify-center text-sm transition-colors ${isCircle ? "inset-0 rounded-full opacity-0 hover:opacity-100" : "top-2 right-2 rounded-full w-6 h-6"}`}
           >
             ×
           </button>
@@ -68,31 +72,44 @@ export function ImageUpload({ currentUrl, onUpload }: Props) {
             </div>
           )}
         </div>
-      )}
-      {!preview && (
+      ) : (
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="w-full h-24 border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-xl flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:text-blue-500 transition-colors disabled:opacity-50"
+          className={`border-2 border-dashed border-gray-300 hover:border-blue-400 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:text-blue-500 transition-colors disabled:opacity-50 ${isCircle ? "w-24 h-24 rounded-full" : "w-full h-24 rounded-xl"}`}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span className="text-xs font-medium">Resim Yükle</span>
-          <span className="text-xs">JPEG, PNG, WebP — maks 5 MB</span>
+          {isCircle ? (
+            <>
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="text-xs font-medium text-center leading-tight px-1">Logo Yükle</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-xs font-medium">Resim Yükle</span>
+              <span className="text-xs">JPEG, PNG, WebP — maks 5 MB</span>
+            </>
+          )}
         </button>
       )}
+
       {preview && !uploading && (
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
           className="text-xs text-blue-600 hover:underline"
         >
-          Resmi değiştir
+          {isCircle ? "Logoyu değiştir" : "Resmi değiştir"}
         </button>
       )}
+
       <input
         ref={inputRef}
         type="file"

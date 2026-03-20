@@ -1,19 +1,7 @@
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-const url = process.env.DATABASE_URL ?? "mysql://root:password@localhost:3306/qr_menu_saas";
-const match = url.match(/^mysql:\/\/([^:]+):([^@]*)@([^:]+):(\d+)\/(.+)$/);
-const [, user, password, host, port, database] = match ?? ["", "root", "password", "localhost", "3306", "qr_menu_saas"];
-
-const adapter = new PrismaMariaDb({
-  host,
-  port: parseInt(port, 10),
-  user,
-  password,
-  database,
-});
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Seed başlıyor...");

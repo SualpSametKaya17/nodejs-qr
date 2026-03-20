@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 interface ItemModifier {
   id: number;
@@ -91,13 +91,13 @@ function CardItem({
   cartQty: number; cartKey: string; onUpdateQty: (key: string, delta: number) => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow lg:flex lg:flex-row">
       {item.imageUrl && (
-        <button onClick={() => onSelect(item)} className="w-full block">
-          <img src={item.imageUrl} alt={item.name} className="w-full h-44 object-cover" />
+        <button onClick={() => onSelect(item)} className="w-full block lg:w-44 lg:flex-shrink-0">
+          <img src={item.imageUrl} alt={item.name} className="w-full h-44 object-cover lg:h-full lg:min-h-[140px]" />
         </button>
       )}
-      <div className="p-3.5">
+      <div className="p-3.5 lg:flex lg:flex-col lg:justify-between lg:flex-1">
         <button onClick={() => onSelect(item)} className="w-full text-left">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-bold text-gray-900">{item.name}</span>
@@ -108,7 +108,10 @@ function CardItem({
             )}
           </div>
           {item.description && (
-            <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">{item.description}</p>
+            <p className="text-xs text-gray-400 mt-1 line-clamp-2 lg:line-clamp-3 leading-relaxed">{item.description}</p>
+          )}
+          {item.calories && (
+            <span className="text-xs text-gray-400 mt-1 hidden lg:block">{item.calories} kcal</span>
           )}
         </button>
         <div className="flex items-center justify-between mt-3">
@@ -117,7 +120,7 @@ function CardItem({
               {currencySymbol}{Number(item.price).toFixed(2)}
             </span>
             {item.calories && (
-              <span className="ml-2 text-xs text-gray-400">{item.calories} kcal</span>
+              <span className="ml-2 text-xs text-gray-400 lg:hidden">{item.calories} kcal</span>
             )}
           </div>
           {cartQty === 0 ? (
@@ -191,24 +194,29 @@ function ListItem({
   cartQty: number; cartKey: string; onUpdateQty: (key: string, delta: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+    <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors lg:py-4">
       <button onClick={() => onSelect(item)} className="flex-1 flex items-center gap-3 text-left min-w-0">
         {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+          <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-cover flex-shrink-0 lg:w-20 lg:h-20 lg:rounded-2xl" />
         ) : (
-          <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 text-2xl">🍽️</div>
+          <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 text-2xl lg:w-20 lg:h-20 lg:rounded-2xl">🍽️</div>
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-semibold text-gray-900 truncate">{item.name}</span>
+            <span className="text-sm font-semibold text-gray-900 truncate lg:text-base">{item.name}</span>
             {item.isPopular && <span className="text-xs" style={{ color: primary }}>⭐</span>}
           </div>
           {item.description && (
-            <p className="text-xs text-gray-400 truncate mt-0.5">{item.description}</p>
+            <p className="text-xs text-gray-400 truncate lg:whitespace-normal lg:line-clamp-2 mt-0.5">{item.description}</p>
           )}
-          <span className="text-sm font-bold mt-1 block" style={{ color: primary }}>
-            {currencySymbol}{Number(item.price).toFixed(2)}
-          </span>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-sm font-bold" style={{ color: primary }}>
+              {currencySymbol}{Number(item.price).toFixed(2)}
+            </span>
+            {item.calories && (
+              <span className="text-xs text-gray-400 hidden lg:inline">{item.calories} kcal</span>
+            )}
+          </div>
         </div>
       </button>
       <div className="flex-shrink-0">
@@ -226,6 +234,15 @@ function ListItem({
   );
 }
 
+interface CustomerInfo {
+  id: number;
+  phone: string;
+  name: string | null;
+  points: number;
+  segment?: string;
+  orderCount?: number;
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Props) {
   const [activeCat, setActiveCat] = useState<number | null>(menu.categories[0]?.id ?? null);
@@ -239,6 +256,25 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const [ordering, setOrdering] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ orderId: number } | null>(null);
   const catRefs = useRef<Record<number, HTMLElement | null>>({});
+
+  // Müşteri sadakat sistemi
+  const [customer, setCustomer] = useState<CustomerInfo | null>(null);
+  const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
+  const [authPhone, setAuthPhone] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+
+  const fetchCustomer = useCallback(async () => {
+    try {
+      const res = await fetch("/api/public/customers/me");
+      const json = await res.json();
+      if (json.success) setCustomer(json.data);
+    } catch { /* oturum yok */ }
+  }, []);
+
+  useEffect(() => { fetchCustomer(); }, [fetchCustomer]);
 
   const primary = menu.restaurant.primaryColor ?? "#2563eb";
   const menuStyle = menu.restaurant.menuStyle ?? "card";
@@ -329,6 +365,36 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
     );
   }
 
+  async function handleAuthSubmit(mode: "login" | "register") {
+    if (!authPhone || !authPassword) { setAuthError("Telefon ve şifre zorunludur."); return; }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch(`/api/public/customers/${mode}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restaurantId, phone: authPhone, name: authName.trim() || undefined, password: authPassword }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCustomer(json.data);
+        setAuthModal(null);
+        setAuthPhone(""); setAuthName(""); setAuthPassword("");
+      } else {
+        setAuthError(json.error ?? "Bir hata oluştu.");
+      }
+    } catch {
+      setAuthError("Bağlantı hatası.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    await fetch("/api/public/customers/logout", { method: "POST" });
+    setCustomer(null);
+  }
+
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
   const cartTotal = cart.reduce((s, c) => s + (c.basePrice + c.modifierPrice) * c.quantity, 0);
 
@@ -399,7 +465,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
     <div className="min-h-screen bg-gray-50">
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 text-white shadow-md" style={{ backgroundColor: primary }}>
-        <div className="max-w-2xl mx-auto px-4 pt-3 pb-2 flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 pt-3 pb-2 flex items-center gap-3">
           {menu.restaurant.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -421,6 +487,28 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
               Masa {tableNumber}
             </span>
           )}
+          {/* Müşteri giriş / profil butonu */}
+          {customer ? (
+            <button
+              onClick={handleLogout}
+              className="flex-shrink-0 flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition-colors px-2.5 py-1.5 rounded-xl"
+              title="Çıkış yap"
+            >
+              <span className="text-white text-xs font-semibold hidden sm:block max-w-[80px] truncate">
+                {customer.name ?? customer.phone}
+              </span>
+              <span className="text-white text-xs font-bold bg-white/20 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                {customer.points}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => { setAuthModal("login"); setAuthError(""); }}
+              className="flex-shrink-0 bg-white/15 hover:bg-white/25 transition-colors text-white text-xs font-semibold px-3 py-1.5 rounded-xl"
+            >
+              Giriş
+            </button>
+          )}
           {/* Sepet ikonu */}
           <button
             onClick={() => setCartOpen(true)}
@@ -441,7 +529,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
         </div>
 
         {/* Arama */}
-        <div className="max-w-2xl mx-auto px-4 pb-2">
+        <div className="max-w-6xl mx-auto px-4 pb-2">
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -455,9 +543,9 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
           </div>
         </div>
 
-        {/* Kategori sekmeleri */}
+        {/* Kategori sekmeleri — sadece mobil */}
         {!search && (
-          <div className="max-w-2xl mx-auto overflow-x-auto pb-2.5 px-4 flex gap-2 scrollbar-hide">
+          <div className="lg:hidden max-w-6xl mx-auto overflow-x-auto pb-2.5 px-4 flex gap-2 scrollbar-hide">
             {menu.categories.map((cat) => (
               <button
                 key={cat.id}
@@ -474,57 +562,87 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
       </header>
 
       {/* ── İçerik ── */}
-      <main className="max-w-2xl mx-auto px-4 py-4 pb-32 space-y-7">
-        {filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">Sonuç bulunamadı.</div>
-        ) : (
-          filtered.map((cat) => (
-            <section
-              key={cat.id}
-              ref={(el) => { catRefs.current[cat.id] = el; }}
-              data-cat-id={cat.id}
-            >
-              {/* Kategori başlığı */}
-              <div className="flex items-center gap-3 mb-4">
-                {cat.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cat.imageUrl} alt={cat.name} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
-                )}
-                <div>
-                  <h2 className="text-base font-bold text-gray-900">{cat.name}</h2>
-                  {cat.description && <p className="text-xs text-gray-400 mt-0.5">{cat.description}</p>}
-                </div>
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        <div className="lg:flex lg:gap-8 lg:items-start">
+
+          {/* Desktop kategori sidebar */}
+          {!search && (
+            <aside className="hidden lg:block w-52 flex-shrink-0 sticky top-28 self-start">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-2">Kategoriler</p>
+                <nav className="space-y-0.5">
+                  {menu.categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => scrollTo(cat.id)}
+                      className="w-full text-left text-sm px-3 py-2 rounded-xl font-medium transition-colors"
+                      style={activeCat === cat.id
+                        ? { backgroundColor: primary, color: "#fff" }
+                        : { color: "#4b5563" }}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </nav>
               </div>
-
-              {/* Ürünler — layout'a göre */}
-              {menuStyle === "grid" ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {cat.items.map((item) => <GridItem key={item.id} {...itemProps(item)} />)}
-                </div>
-              ) : menuStyle === "list" ? (
-                <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden shadow-sm">
-                  {cat.items.map((item) => <ListItem key={item.id} {...itemProps(item)} />)}
-                </div>
-              ) : (
-                /* card (default) */
-                <div className="grid grid-cols-1 gap-3">
-                  {cat.items.map((item) => <CardItem key={item.id} {...itemProps(item)} />)}
-                </div>
-              )}
-            </section>
-          ))
-        )}
-
-        <footer className="text-center text-xs text-gray-300 py-4 space-y-1">
-          {menu.restaurant.phone && (
-            <p>
-              <a href={`tel:${menu.restaurant.phone}`} className="hover:text-gray-400">{menu.restaurant.phone}</a>
-            </p>
+            </aside>
           )}
-          {menu.restaurant.address && <p>{menu.restaurant.address}</p>}
-          <p className="mt-3 text-gray-200/40">Dijital Menü</p>
-        </footer>
-      </main>
+
+          {/* Ana içerik */}
+          <main className="flex-1 min-w-0 pb-32 space-y-7">
+            {filtered.length === 0 ? (
+              <div className="text-center py-16 text-gray-400 text-sm">Sonuç bulunamadı.</div>
+            ) : (
+              filtered.map((cat) => (
+                <section
+                  key={cat.id}
+                  ref={(el) => { catRefs.current[cat.id] = el; }}
+                  data-cat-id={cat.id}
+                >
+                  {/* Kategori başlığı */}
+                  <div className="flex items-center gap-3 mb-4">
+                    {cat.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cat.imageUrl} alt={cat.name} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
+                    )}
+                    <div>
+                      <h2 className="text-base font-bold text-gray-900">{cat.name}</h2>
+                      {cat.description && <p className="text-xs text-gray-400 mt-0.5">{cat.description}</p>}
+                    </div>
+                  </div>
+
+                  {/* Ürünler — layout'a göre */}
+                  {menuStyle === "grid" ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {cat.items.map((item) => <GridItem key={item.id} {...itemProps(item)} />)}
+                    </div>
+                  ) : menuStyle === "list" ? (
+                    <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden shadow-sm">
+                      {cat.items.map((item) => <ListItem key={item.id} {...itemProps(item)} />)}
+                    </div>
+                  ) : (
+                    /* card (default) */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {cat.items.map((item) => <CardItem key={item.id} {...itemProps(item)} />)}
+                    </div>
+                  )}
+                </section>
+              ))
+            )}
+
+            <footer className="text-center text-xs text-gray-300 py-4 space-y-1">
+              {menu.restaurant.phone && (
+                <p>
+                  <a href={`tel:${menu.restaurant.phone}`} className="hover:text-gray-400">{menu.restaurant.phone}</a>
+                </p>
+              )}
+              {menu.restaurant.address && <p>{menu.restaurant.address}</p>}
+              <p className="mt-3 text-gray-200/40">Dijital Menü</p>
+            </footer>
+          </main>
+
+        </div>
+      </div>
 
       {/* ── Sepet butonu (floating) ── */}
       {cartCount > 0 && !cartOpen && (
@@ -677,14 +795,14 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
 
       {/* ── Sepet drawer ── */}
       {cartOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setCartOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-stretch lg:justify-end" onClick={() => setCartOpen(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div
-            className="relative bg-white rounded-t-3xl w-full max-w-2xl max-h-[88vh] flex flex-col"
+            className="relative bg-white rounded-t-3xl w-full max-w-2xl max-h-[88vh] flex flex-col lg:rounded-none lg:rounded-l-3xl lg:w-[420px] lg:max-w-[420px] lg:max-h-full lg:h-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Handle */}
-            <div className="pt-3 pb-1 flex justify-center flex-shrink-0">
+            {/* Handle — sadece mobil */}
+            <div className="pt-3 pb-1 flex justify-center flex-shrink-0 lg:hidden">
               <div className="w-10 h-1 bg-gray-200 rounded-full" />
             </div>
 
@@ -760,6 +878,69 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                 {ordering ? "Gönderiliyor..." : "Sipariş Ver"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Müşteri giriş / kayıt modal ── */}
+      {authModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setAuthModal(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Tab */}
+            <div className="flex rounded-xl overflow-hidden border border-gray-200">
+              <button
+                onClick={() => { setAuthModal("login"); setAuthError(""); }}
+                className="flex-1 py-2.5 text-sm font-semibold transition-colors"
+                style={authModal === "login" ? { backgroundColor: primary, color: "#fff" } : { color: "#6b7280" }}
+              >Giriş Yap</button>
+              <button
+                onClick={() => { setAuthModal("register"); setAuthError(""); }}
+                className="flex-1 py-2.5 text-sm font-semibold transition-colors"
+                style={authModal === "register" ? { backgroundColor: primary, color: "#fff" } : { color: "#6b7280" }}
+              >Kayıt Ol</button>
+            </div>
+
+            <div className="space-y-3">
+              {authModal === "register" && (
+                <input
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  placeholder="Adınız (opsiyonel)"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                />
+              )}
+              <input
+                value={authPhone}
+                onChange={(e) => setAuthPhone(e.target.value)}
+                placeholder="Telefon numarası"
+                type="tel"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+              />
+              <input
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Şifre"
+                type="password"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+              />
+            </div>
+
+            {authError && (
+              <p className="text-xs text-red-500 text-center">{authError}</p>
+            )}
+
+            <button
+              onClick={() => handleAuthSubmit(authModal)}
+              disabled={authLoading}
+              className="w-full py-3.5 rounded-2xl text-white font-bold text-sm transition-opacity disabled:opacity-60"
+              style={{ backgroundColor: primary }}
+            >
+              {authLoading ? "Lütfen bekleyin..." : authModal === "login" ? "Giriş Yap" : "Kayıt Ol"}
+            </button>
+
+            <p className="text-center text-xs text-gray-400">
+              Giriş yaparak puan kazanın, kampanyalardan yararlanın.
+            </p>
           </div>
         </div>
       )}

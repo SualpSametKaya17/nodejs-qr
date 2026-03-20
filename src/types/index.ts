@@ -21,3 +21,11 @@ export type AuthSession = {
   planId: number;
   role: string; // "restaurant" | "superadmin"
 };
+
+export type CustomerSession = {
+  id: number;
+  phone: string;
+  name: string | null;
+  restaurantId: number;
+  role: "customer";
+};

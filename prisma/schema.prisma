@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── PLANS ───────────────────────────────────────────────────────────────────
@@ -52,13 +51,14 @@ model Restaurant {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  plan     Plan        @relation(fields: [planId], references: [id])
-  menus    Menu[]
-  qrCodes  QrCode[]
-  orders   Order[]
-  payments Payment[]
+  plan      Plan        @relation(fields: [planId], references: [id])
+  menus     Menu[]
+  qrCodes   QrCode[]
+  orders    Order[]
+  payments  Payment[]
   analytics Analytics[]
-  staff    Staff[]
+  staff     Staff[]
+  customers Customer[]
 
   @@map("restaurants")
 }
@@ -144,10 +144,34 @@ model QrCode {
   @@map("qr_codes")
 }
 
+// ─── CUSTOMERS (sadakat sistemi) ─────────────────────────────────────────────
+model Customer {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  phone        String   @db.VarChar(20)
+  name         String?  @db.VarChar(255)
+  email        String?  @db.VarChar(255)
+  passwordHash String?  @db.VarChar(255)
+  points       Int      @default(0)
+  totalSpent   Decimal  @default(0) @db.Decimal(10, 2)
+  orderCount   Int      @default(0)
+  segment      String   @default("new") @db.VarChar(20) // new | regular | vip
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@unique([restaurantId, phone])
+  @@map("customers")
+}
+
 // ─── ORDERS ──────────────────────────────────────────────────────────────────
 model Order {
   id           Int         @id @default(autoincrement())
   restaurantId Int
+  customerId   Int?
   tableNumber  String?     @db.VarChar(20)
   customerNote String?     @db.Text
   status       OrderStatus @default(PENDING)
@@ -156,6 +180,7 @@ model Order {
   updatedAt    DateTime    @updatedAt
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer   Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items      OrderItem[]
 
   @@map("orders")

@@ -46,8 +46,8 @@ export default async function AnalyticsPage() {
       prisma.menuItem.count({ where: { category: { menu: { restaurantId } } } }),
     ]);
 
-  const totalScans = qrCodes.reduce((s: number, c) => s + c.scanCount, 0);
-  const orderRevenue = recentOrders.reduce((s: number, o) => s + Number(o.totalAmount), 0);
+  const totalScans = qrCodes.reduce((s: number, c: (typeof qrCodes)[number]) => s + c.scanCount, 0);
+  const orderRevenue = recentOrders.reduce((s: number, o: (typeof recentOrders)[number]) => s + Number(o.totalAmount), 0);
 
   // Günlük sipariş grafiği (son 30 gün)
   const dailyMap: Record<string, { count: number; revenue: number }> = {};

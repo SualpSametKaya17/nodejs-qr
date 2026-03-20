@@ -14,11 +14,22 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Herkese açık yollar
-  if (
+  const isPublic =
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith(MENU_PATH_PREFIX) ||
-    pathname === "/"
-  ) {
+    pathname === "/";
+
+  if (isPublic) {
+    // Giriş yapmış kullanıcıyı login/register'dan dashboard'a yönlendir
+    if (pathname === "/login" || pathname === "/register") {
+      const token = req.cookies.get("auth_token")?.value;
+      if (token) {
+        const session = await verifyToken(token);
+        if (session) {
+          return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+      }
+    }
     return NextResponse.next();
   }
 

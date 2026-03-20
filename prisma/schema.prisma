@@ -44,12 +44,14 @@ model Restaurant {
   updatedAt    DateTime @updatedAt
 
   plan     Plan        @relation(fields: [planId], references: [id])
-  menus    Menu[]
-  qrCodes  QrCode[]
-  orders   Order[]
-  payments Payment[]
-  analytics Analytics[]
-  staff    Staff[]
+  menus          Menu[]
+  qrCodes        QrCode[]
+  orders         Order[]
+  payments       Payment[]
+  analytics      Analytics[]
+  staff          Staff[]
+  customers      Customer[]
+  loyaltyProgram LoyaltyProgram?
 
   @@map("restaurants")
 }
@@ -132,10 +134,77 @@ model QrCode {
   @@map("qr_codes")
 }
 
+// ─── CUSTOMERS ───────────────────────────────────────────────────────────────
+model Customer {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  name         String?  @db.VarChar(255)
+  phone        String   @db.VarChar(20)
+  email        String?  @db.VarChar(255)
+  totalPoints  Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant   Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  transactions LoyaltyTransaction[]
+  orders       Order[]
+
+  @@unique([restaurantId, phone])
+  @@index([restaurantId])
+  @@map("customers")
+}
+
+// ─── LOYALTY PROGRAM ─────────────────────────────────────────────────────────
+model LoyaltyProgram {
+  id                   Int      @id @default(autoincrement())
+  restaurantId         Int      @unique
+  isActive             Boolean  @default(true)
+  pointsPerUnit        Int      @default(1)
+  minimumRedeemPoints  Int      @default(100)
+  welcomeBonus         Int      @default(0)
+  expiryDays           Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_programs")
+}
+
+// ─── LOYALTY TRANSACTIONS ────────────────────────────────────────────────────
+model LoyaltyTransaction {
+  id           Int                    @id @default(autoincrement())
+  restaurantId Int
+  customerId   Int
+  orderId      Int?
+  type         LoyaltyTransactionType
+  points       Int
+  description  String?                @db.VarChar(500)
+  createdAt    DateTime               @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([restaurantId, createdAt])
+  @@map("loyalty_transactions")
+}
+
+enum LoyaltyTransactionType {
+  EARN
+  REDEEM
+  MANUAL_ADD
+  MANUAL_SUB
+  WELCOME
+  EXPIRE
+}
+
 // ─── ORDERS ──────────────────────────────────────────────────────────────────
 model Order {
   id           Int         @id @default(autoincrement())
   restaurantId Int
+  customerId   Int?
   tableNumber  String?     @db.VarChar(20)
   customerNote String?     @db.Text
   status       OrderStatus @default(PENDING)
@@ -143,8 +212,10 @@ model Order {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  items      OrderItem[]
+  restaurant          Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer            Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items               OrderItem[]
+  loyaltyTransactions LoyaltyTransaction[]
 
   @@map("orders")
 }

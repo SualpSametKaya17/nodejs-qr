@@ -13,6 +13,7 @@ export default async function SettingsPage() {
       email: true,
       logoUrl: true,
       primaryColor: true,
+      menuStyle: true,
       address: true,
       phone: true,
       currency: true,

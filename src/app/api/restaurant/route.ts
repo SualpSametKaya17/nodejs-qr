@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest) {
 
     // İzin verilen alanlar
     const allowed = [
-      "name", "logoUrl", "primaryColor",
+      "name", "logoUrl", "primaryColor", "menuStyle",
       "address", "phone", "currency", "language",
     ] as const;
 
@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest) {
       where: { id: restaurantId },
       data,
       select: {
-        id: true, name: true, logoUrl: true, primaryColor: true,
+        id: true, name: true, logoUrl: true, primaryColor: true, menuStyle: true,
         address: true, phone: true, currency: true, language: true,
         subscriptionPlan: true, subscriptionStatus: true,
       },

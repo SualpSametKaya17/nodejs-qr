@@ -41,6 +41,7 @@ model Restaurant {
   language           String   @default("tr") @db.VarChar(10)
   timezone           String   @default("Europe/Istanbul") @db.VarChar(50)
   primaryColor       String?  @db.VarChar(7)
+  menuStyle          String   @default("card") @db.VarChar(20)
   subscriptionPlan   String   @default("free") @db.VarChar(50)
   subscriptionStatus String   @default("active") @db.VarChar(50)
   isActive           Boolean  @default(true)

@@ -34,7 +34,10 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     where: { id: mId, restaurantId: rId, isActive: true },
     include: {
       restaurant: {
-        select: { name: true, logoUrl: true, primaryColor: true, address: true, phone: true },
+        select: {
+          name: true, logoUrl: true, primaryColor: true, menuStyle: true,
+          address: true, phone: true, currency: true,
+        },
       },
       categories: {
         where: { isActive: true },
@@ -51,12 +54,12 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
 
   if (!menu) notFound();
 
-  // Decimal → string (JSON serialization, client component'e geçiş için)
   const serialized = JSON.parse(JSON.stringify(menu));
 
   return (
     <PublicMenuClient
       menu={serialized}
+      restaurantId={rId}
       tableNumber={tableNumber ?? null}
       qrId={qrId ?? null}
     />

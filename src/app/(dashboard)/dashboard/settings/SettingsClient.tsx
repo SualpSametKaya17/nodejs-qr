@@ -8,6 +8,7 @@ interface Restaurant {
   email: string;
   logoUrl: string | null;
   primaryColor: string | null;
+  menuStyle: string | null;
   address: string | null;
   phone: string | null;
   currency: string | null;
@@ -66,6 +67,7 @@ export function SettingsClient({ restaurant }: Props) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [color, setColor] = useState(restaurant.primaryColor ?? "#2563eb");
+  const [menuStyle, setMenuStyle] = useState(restaurant.menuStyle ?? "card");
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -102,6 +104,7 @@ export function SettingsClient({ restaurant }: Props) {
       body: JSON.stringify({
         logoUrl: form.get("logoUrl"),
         primaryColor: color,
+        menuStyle,
       }),
     });
     setSaving(false);
@@ -288,13 +291,36 @@ export function SettingsClient({ restaurant }: Props) {
                   pattern="^#[0-9A-Fa-f]{6}$"
                   placeholder="#2563eb"
                 />
-                {/* Önizleme */}
                 <div
                   className="px-3 py-1.5 rounded-lg text-white text-xs font-medium"
                   style={{ backgroundColor: color }}
                 >
                   Önizleme
                 </div>
+              </div>
+            </Field>
+            <Field label="Menü Görüntüleme Stili">
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                {[
+                  { value: "card", label: "Kart", desc: "Resimli büyük kart", icon: "⊞" },
+                  { value: "grid", label: "Izgara", desc: "2 sütun grid", icon: "⊟" },
+                  { value: "list", label: "Liste", desc: "Kompakt liste", icon: "≡" },
+                ].map((s) => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => setMenuStyle(s.value)}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-center transition-colors ${
+                      menuStyle === s.value
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
+                    }`}
+                  >
+                    <span className="text-2xl">{s.icon}</span>
+                    <span className={`text-xs font-semibold ${menuStyle === s.value ? "text-blue-700" : "text-gray-700"}`}>{s.label}</span>
+                    <span className="text-xs text-gray-400 hidden sm:block">{s.desc}</span>
+                  </button>
+                ))}
               </div>
             </Field>
             <div className="flex justify-end pt-1">

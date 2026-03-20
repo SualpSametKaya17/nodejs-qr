@@ -73,9 +73,10 @@ interface SidebarProps {
   menuUrl: string | null;
   open: boolean;
   onClose: () => void;
+  pendingOrders?: number;
 }
 
-export function Sidebar({ restaurantName, menuUrl, open, onClose }: SidebarProps) {
+export function Sidebar({ restaurantName, menuUrl, open, onClose, pendingOrders = 0 }: SidebarProps) {
   const pathname = usePathname();
 
   const content = (
@@ -116,6 +117,7 @@ export function Sidebar({ restaurantName, menuUrl, open, onClose }: SidebarProps
               ? pathname === "/dashboard"
               : pathname.startsWith(item.href);
 
+          const isOrders = item.href === "/dashboard/orders";
           return (
             <Link
               key={item.href}
@@ -130,7 +132,12 @@ export function Sidebar({ restaurantName, menuUrl, open, onClose }: SidebarProps
               <span className={isActive ? "text-blue-600" : "text-gray-400"}>
                 {item.icon}
               </span>
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {isOrders && pendingOrders > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {pendingOrders}
+                </span>
+              )}
             </Link>
           );
         })}

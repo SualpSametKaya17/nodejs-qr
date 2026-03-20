@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
   "/register",
   "/api/auth/login",
   "/api/auth/register",
+  "/api/public/",
 ];
 
 const MENU_PATH_PREFIX = "/m/";

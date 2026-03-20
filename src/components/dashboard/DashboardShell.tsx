@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import type { AuthSession } from "@/types";
@@ -13,6 +13,21 @@ interface Props {
 
 export function DashboardShell({ session, menuUrl, children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState(0);
+
+  useEffect(() => {
+    async function fetchPending() {
+      try {
+        const res = await fetch("/api/orders?status=PENDING&limit=200");
+        const json = await res.json();
+        if (json.success) setPendingOrders(json.data.orders.length);
+      } catch { /* sessiz geç */ }
+    }
+
+    fetchPending();
+    const interval = setInterval(fetchPending, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -21,6 +36,7 @@ export function DashboardShell({ session, menuUrl, children }: Props) {
         menuUrl={menuUrl}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        pendingOrders={pendingOrders}
       />
       <div className="flex flex-col flex-1 min-w-0">
         <TopBar session={session} onMenuClick={() => setSidebarOpen(true)} />

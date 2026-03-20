@@ -1,17 +1,28 @@
 import { requireSession } from "@/lib/session";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { CategoriesClient } from "./CategoriesClient";
 
 interface Props {
-  searchParams: Promise<{ menuId?: string }>;
+  searchParams: Promise<{ menuId?: string; restaurantId?: string }>;
+}
+
+async function getEffectiveId(sessionId: number, role: string, searchParams: { restaurantId?: string }) {
+  if (role !== "superadmin") return sessionId;
+  if (searchParams.restaurantId) return parseInt(searchParams.restaurantId, 10);
+  const cookieStore = await cookies();
+  const c = cookieStore.get("superadmin_target_restaurant")?.value;
+  return c && !isNaN(parseInt(c, 10)) ? parseInt(c, 10) : sessionId;
 }
 
 export default async function CategoriesPage({ searchParams }: Props) {
   const session = await requireSession();
-  const { menuId: menuIdParam } = await searchParams;
+  const { menuId: menuIdParam, restaurantId: restaurantIdParam } = await searchParams;
+
+  const restaurantId = await getEffectiveId(session.id, session.role, { restaurantId: restaurantIdParam });
 
   const menus = await prisma.menu.findMany({
-    where: { restaurantId: session.id },
+    where: { restaurantId },
     orderBy: { isDefault: "desc" },
     select: { id: true, name: true, isDefault: true, isActive: true },
   });

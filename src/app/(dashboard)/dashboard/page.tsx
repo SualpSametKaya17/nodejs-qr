@@ -1,21 +1,36 @@
 import { requireSession } from "@/lib/session";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { StatCard } from "@/components/dashboard/StatCard";
 import Link from "next/link";
 
-export default async function DashboardPage() {
+interface Props {
+  searchParams: Promise<{ restaurantId?: string }>;
+}
+
+async function getEffectiveId(sessionId: number, role: string, searchParams: { restaurantId?: string }) {
+  if (role !== "superadmin") return sessionId;
+  if (searchParams.restaurantId) return parseInt(searchParams.restaurantId, 10);
+  const cookieStore = await cookies();
+  const c = cookieStore.get("superadmin_target_restaurant")?.value;
+  return c && !isNaN(parseInt(c, 10)) ? parseInt(c, 10) : sessionId;
+}
+
+export default async function DashboardPage({ searchParams }: Props) {
   const session = await requireSession();
+  const sp = await searchParams;
+  const restaurantId = await getEffectiveId(session.id, session.role, sp);
 
   const [menuCount, qrCount, orderStats, recentOrders] = await Promise.all([
-    prisma.menu.count({ where: { restaurantId: session.id, isActive: true } }),
-    prisma.qrCode.count({ where: { restaurantId: session.id, isActive: true } }),
+    prisma.menu.count({ where: { restaurantId, isActive: true } }),
+    prisma.qrCode.count({ where: { restaurantId, isActive: true } }),
     prisma.order.groupBy({
       by: ["status"],
-      where: { restaurantId: session.id },
+      where: { restaurantId },
       _count: true,
     }),
     prisma.order.findMany({
-      where: { restaurantId: session.id },
+      where: { restaurantId },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: {
@@ -107,7 +122,6 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Hızlı erişim */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link
           href="/dashboard/menu"
@@ -145,7 +159,6 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Son siparişler */}
       <div className="bg-white border border-gray-200 rounded-xl">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Son Siparişler</h2>

@@ -51,7 +51,19 @@ export async function proxy(req: NextRequest) {
 
   // Session bilgisini header'a ekle (API route'larında kullanmak için)
   const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-restaurant-id", String(session.id));
+  requestHeaders.set("x-role", session.role);
+
+  // Superadmin ise, seçili restoranı cookie'den oku
+  if (session.role === "superadmin") {
+    const targetId = req.cookies.get("superadmin_target_restaurant")?.value;
+    const effectiveId = targetId && !isNaN(parseInt(targetId, 10))
+      ? targetId
+      : String(session.id);
+    requestHeaders.set("x-restaurant-id", effectiveId);
+  } else {
+    requestHeaders.set("x-restaurant-id", String(session.id));
+  }
+
   requestHeaders.set("x-restaurant-slug", session.slug);
   requestHeaders.set("x-plan-id", String(session.planId));
 

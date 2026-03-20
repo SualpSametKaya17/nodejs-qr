@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { RestaurantSelectorBar } from "./RestaurantSelectorBar";
 import type { AuthSession } from "@/types";
 
 interface PendingOrder {
@@ -14,13 +15,22 @@ interface PendingOrder {
   items: { quantity: number; menuItem: { name: string } }[];
 }
 
+interface SuperadminRestaurant {
+  id: number;
+  name: string;
+  email: string;
+  isActive: boolean;
+}
+
 interface Props {
   session: AuthSession;
   menuUrl: string | null;
   children: React.ReactNode;
+  allRestaurants?: SuperadminRestaurant[] | null;
+  selectedRestaurantId?: number | null;
 }
 
-export function DashboardShell({ session, menuUrl, children }: Props) {
+export function DashboardShell({ session, menuUrl, children, allRestaurants, selectedRestaurantId }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -87,6 +97,12 @@ export function DashboardShell({ session, menuUrl, children }: Props) {
           onMenuClick={() => setSidebarOpen(true)}
           pendingOrders={pendingOrders}
         />
+        {allRestaurants && allRestaurants.length > 0 && (
+          <RestaurantSelectorBar
+            restaurants={allRestaurants}
+            selectedId={selectedRestaurantId ?? null}
+          />
+        )}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import type { AuthSession } from "@/types";
@@ -23,13 +23,46 @@ interface Props {
 export function DashboardShell({ session, menuUrl, children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const knownIdsRef = useRef<Set<number> | null>(null);
+
+  async function playBeep() {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") await ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.35);
+    } catch { /* sessiz geç */ }
+  }
 
   useEffect(() => {
     async function fetchPending() {
       try {
         const res = await fetch("/api/orders?status=PENDING&limit=20");
         const json = await res.json();
-        if (json.success) setPendingOrders(json.data.orders);
+        if (!json.success) return;
+        const orders: PendingOrder[] = json.data.orders;
+
+        if (knownIdsRef.current === null) {
+          // İlk yükleme: mevcut siparişleri kaydet, ses çalma
+          knownIdsRef.current = new Set(orders.map((o) => o.id));
+        } else {
+          // Yeni sipariş var mı kontrol et
+          const hasNew = orders.some((o) => !knownIdsRef.current!.has(o.id));
+          if (hasNew) playBeep();
+          knownIdsRef.current = new Set(orders.map((o) => o.id));
+        }
+
+        setPendingOrders(orders);
       } catch { /* sessiz geç */ }
     }
 

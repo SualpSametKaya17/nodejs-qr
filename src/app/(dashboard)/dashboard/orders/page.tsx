@@ -11,7 +11,10 @@ export default async function OrdersPage() {
     where: { restaurantId: session.id },
     include: {
       items: {
-        include: { menuItem: { select: { name: true, imageUrl: true } } },
+        include: {
+          menuItem: { select: { name: true, imageUrl: true } },
+          modifiers: true,
+        },
       },
     },
     orderBy: { createdAt: "desc" },

@@ -91,19 +91,22 @@ export function OrdersClient({ initialOrders }: Props) {
   const audioRef = useRef<AudioContext | null>(null);
 
   // Bildirim sesi (Web Audio API)
-  function playBeep() {
+  async function playBeep() {
     try {
       if (!audioRef.current) audioRef.current = new AudioContext();
       const ctx = audioRef.current;
+      if (ctx.state === "suspended") await ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.frequency.value = 880;
+      // İki tonlu bildirim sesi
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.15);
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
       osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.4);
+      osc.stop(ctx.currentTime + 0.35);
     } catch { /* Ses desteği yoksa sessiz geç */ }
   }
 
@@ -269,9 +272,9 @@ export function OrdersClient({ initialOrders }: Props) {
                     </span>
                     <div className="flex-1 min-w-0">
                       <span className="truncate block">{item.menuItem.name}</span>
-                      {item.modifiers.length > 0 && (
+                      {(item.modifiers ?? []).length > 0 && (
                         <span className="text-xs text-gray-400">
-                          {item.modifiers.map((m) => m.name).join(", ")}
+                          {(item.modifiers ?? []).map((m) => m.name).join(", ")}
                         </span>
                       )}
                     </div>

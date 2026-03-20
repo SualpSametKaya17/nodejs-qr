@@ -84,7 +84,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 
 // ─── Card layout (default) ───────────────────────────────────────────────────
 function CardItem({
-  item, primary, currencySymbol, onSelect, onAdd, cartQty, onUpdateQty,
+  item, primary, currencySymbol, onSelect, onAdd, cartQty, cartKey, onUpdateQty,
 }: {
   item: MenuItem; primary: string; currencySymbol: string;
   onSelect: (i: MenuItem) => void; onAdd: (i: MenuItem) => void;
@@ -141,7 +141,7 @@ function CardItem({
 
 // ─── Grid layout (2 columns) ──────────────────────────────────────────────────
 function GridItem({
-  item, primary, currencySymbol, onSelect, onAdd, cartQty, onUpdateQty,
+  item, primary, currencySymbol, onSelect, onAdd, cartQty, cartKey, onUpdateQty,
 }: {
   item: MenuItem; primary: string; currencySymbol: string;
   onSelect: (i: MenuItem) => void; onAdd: (i: MenuItem) => void;
@@ -184,7 +184,7 @@ function GridItem({
 
 // ─── List layout (compact) ────────────────────────────────────────────────────
 function ListItem({
-  item, primary, currencySymbol, onSelect, onAdd, cartQty, onUpdateQty,
+  item, primary, currencySymbol, onSelect, onAdd, cartQty, cartKey, onUpdateQty,
 }: {
   item: MenuItem; primary: string; currencySymbol: string;
   onSelect: (i: MenuItem) => void; onAdd: (i: MenuItem) => void;
@@ -216,7 +216,7 @@ function ListItem({
           <button onClick={() => onAdd(item)} className="w-9 h-9 rounded-xl text-white flex items-center justify-center font-bold text-xl" style={{ backgroundColor: primary }}>+</button>
         ) : (
           <div className="flex items-center gap-1 p-0.5 rounded-xl" style={{ backgroundColor: primary + "18" }}>
-            <button onClick={() => onUpdateQty(item.id, -1)} className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center font-bold text-gray-700 text-base">−</button>
+            <button onClick={() => onUpdateQty(cartKey, -1)} className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center font-bold text-gray-700 text-base">−</button>
             <span className="text-sm font-bold w-5 text-center" style={{ color: primary }}>{cartQty}</span>
             <button onClick={() => onAdd(item)} className="w-7 h-7 rounded-lg text-white flex items-center justify-center font-bold text-base" style={{ backgroundColor: primary }}>+</button>
           </div>

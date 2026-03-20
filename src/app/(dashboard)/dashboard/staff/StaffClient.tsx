@@ -8,7 +8,7 @@ interface StaffMember {
   email: string;
   role: string;
   isActive: boolean;
-  createdAt: string;
+  createdAt: Date | string;
 }
 
 interface Props {

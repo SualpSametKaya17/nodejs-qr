@@ -231,14 +231,14 @@ export function AnalyticsClient({
                 const maxItems = Math.max(...categories.map((x) => x.itemCount), 1);
                 return (
                   <div key={c.name} className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600 w-32 truncate flex-shrink-0">{c.name}</span>
+                    <span className="text-sm text-gray-600 w-32 truncate shrink-0">{c.name}</span>
                     <div className="flex-1 bg-gray-100 rounded-full h-2">
                       <div
                         className="bg-purple-400 h-2 rounded-full"
                         style={{ width: `${(c.itemCount / maxItems) * 100}%` }}
                       />
                     </div>
-                    <span className="text-sm text-gray-500 w-8 text-right flex-shrink-0">{c.itemCount}</span>
+                    <span className="text-sm text-gray-500 w-8 text-right shrink-0">{c.itemCount}</span>
                   </div>
                 );
               })}

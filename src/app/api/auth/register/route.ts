@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
       name: restaurant.name,
       slug: restaurant.slug,
       planId: restaurant.planId,
+      role: "restaurant",
     });
 
     const response = NextResponse.json<ApiResponse>(

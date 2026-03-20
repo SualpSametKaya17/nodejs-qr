@@ -68,7 +68,7 @@ const NAV_ITEMS = [
   },
 ];
 
-export function Sidebar({ restaurantName }: { restaurantName: string }) {
+export function Sidebar({ restaurantName, menuUrl }: { restaurantName: string; menuUrl: string | null }) {
   const pathname = usePathname();
 
   return (
@@ -122,7 +122,7 @@ export function Sidebar({ restaurantName }: { restaurantName: string }) {
       {/* Alt link: menüyü görüntüle */}
       <div className="p-3 border-t border-gray-100">
         <a
-          href="#"
+          href={menuUrl ?? "#"}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-3 py-2 text-xs text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"

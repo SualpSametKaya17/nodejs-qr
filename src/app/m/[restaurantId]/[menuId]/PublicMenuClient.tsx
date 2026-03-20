@@ -330,6 +330,10 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   // Seçilen modifierlar (item detail modalında)
   const [selectedMods, setSelectedMods] = useState<Record<number, number[]>>({}); // groupId → modifierIds
+  // Hızlı sepete ekle — modifier popup
+  const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
+  const [modifierMods, setModifierMods] = useState<Record<number, number[]>>({});
+  const [logoError, setLogoError] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [orderNote, setOrderNote] = useState("");
@@ -397,6 +401,26 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
     }
     setSelectedMods(defaults);
     setSelectedItem(item);
+  }
+
+  // Hızlı sepete ekle — modifier seçim popup'ı
+  function openModifiers(item: MenuItem) {
+    const defaults: Record<number, number[]> = {};
+    for (const g of item.modifierGroups) {
+      const defaultMods = g.modifiers.filter((m) => m.isDefault).map((m) => m.id);
+      if (defaultMods.length > 0) defaults[g.id] = defaultMods;
+    }
+    setModifierMods(defaults);
+    setModifierItem(item);
+  }
+
+  function toggleModifierMod(group: ItemModifierGroup, modId: number) {
+    setModifierMods((prev) => {
+      const current = prev[group.id] ?? [];
+      if (group.type === "single") return { ...prev, [group.id]: [modId] };
+      if (current.includes(modId)) return { ...prev, [group.id]: current.filter((id) => id !== modId) };
+      return { ...prev, [group.id]: [...current, modId] };
+    });
   }
 
   function toggleMod(group: ItemModifierGroup, modId: number) {
@@ -532,7 +556,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
       currencySymbol,
       onSelect: openItem,
       onAdd: (i: MenuItem) => {
-        if (i.modifierGroups.length > 0) { openItem(i); return; }
+        if (i.modifierGroups.length > 0) { openModifiers(i); return; }
         addToCart(i, {});
       },
       cartQty: cartEntry?.quantity ?? 0,
@@ -547,12 +571,13 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 text-white shadow-md" style={{ backgroundColor: primary }}>
         <div className="max-w-6xl mx-auto px-4 pt-3 pb-2 flex items-center gap-3">
-          {menu.restaurant.logoUrl ? (
+          {menu.restaurant.logoUrl && !logoError ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={menu.restaurant.logoUrl}
               alt={menu.restaurant.name}
               className="w-10 h-10 rounded-full object-cover ring-2 ring-white/30 flex-shrink-0"
+              onError={() => setLogoError(true)}
             />
           ) : (
             <div className="w-10 h-10 rounded-full bg-white/20 ring-2 ring-white/30 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
@@ -881,6 +906,137 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modifier seçim popup'ı (hızlı sepete ekle) ── */}
+      {modifierItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          onClick={() => setModifierItem(null)}
+        >
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle (mobil) */}
+            <div className="pt-3 pb-1 flex justify-center flex-shrink-0 sm:hidden">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+
+            {/* Başlık */}
+            <div className="px-5 pt-4 pb-3 flex-shrink-0 border-b border-gray-100">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">{modifierItem.name}</h3>
+                  <p className="text-sm mt-0.5" style={{ color: primary }}>
+                    {currencySymbol}{Number(modifierItem.price).toFixed(2)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setModifierItem(null)}
+                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 flex-shrink-0"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modifier grupları */}
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+              {modifierItem.modifierGroups.map((group) => {
+                const isSingle = group.type === "single";
+                const selectedIds = modifierMods[group.id] ?? [];
+                return (
+                  <div key={group.id}>
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-sm font-bold text-gray-900">{group.name}</span>
+                      {group.required && (
+                        <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-semibold">Zorunlu</span>
+                      )}
+                      <span className="text-xs text-gray-400 ml-auto">
+                        {isSingle ? "Birini seç" : "Birden fazla seçebilirsin"}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {group.modifiers.map((mod) => {
+                        const isSelected = selectedIds.includes(mod.id);
+                        return (
+                          <button
+                            key={mod.id}
+                            type="button"
+                            onClick={() => toggleModifierMod(group, mod.id)}
+                            className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 text-left transition-all active:scale-[0.98]"
+                            style={{
+                              borderColor: isSelected ? primary : "#e5e7eb",
+                              backgroundColor: isSelected ? primary + "10" : "#f9fafb",
+                            }}
+                          >
+                            <span
+                              className="flex-shrink-0 flex items-center justify-center transition-all"
+                              style={{
+                                width: 22, height: 22,
+                                borderRadius: isSingle ? "50%" : 6,
+                                border: `2.5px solid ${isSelected ? primary : "#d1d5db"}`,
+                                backgroundColor: isSelected ? primary : "white",
+                              }}
+                            >
+                              {isSelected && (
+                                <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+                                  <path d="M1 5L4.5 8.5L11 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </span>
+                            <span className="flex-1 text-sm font-medium text-gray-800 leading-tight">{mod.name}</span>
+                            {Number(mod.price) > 0 && (
+                              <span className="text-sm font-bold flex-shrink-0" style={{ color: primary }}>
+                                +{currencySymbol}{Number(mod.price).toFixed(2)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Alt çubuk: toplam + ekle butonu */}
+            {(() => {
+              const modTotal = modifierItem.modifierGroups.flatMap((g) =>
+                g.modifiers.filter((m) => (modifierMods[g.id] ?? []).includes(m.id))
+              ).reduce((s, m) => s + Number(m.price), 0);
+              const total = Number(modifierItem.price) + modTotal;
+              return (
+                <div className="flex-shrink-0 px-5 py-4 border-t border-gray-100 flex items-center gap-3">
+                  <div className="text-sm text-gray-500">
+                    Toplam:&nbsp;
+                    <span className="font-bold text-base" style={{ color: primary }}>
+                      {currencySymbol}{total.toFixed(2)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const missing = modifierItem.modifierGroups.find(
+                        (g) => g.required && (modifierMods[g.id] ?? []).length === 0
+                      );
+                      if (missing) { alert(`"${missing.name}" zorunlu, lütfen seçin.`); return; }
+                      addToCart(modifierItem, modifierMods);
+                      setModifierItem(null);
+                    }}
+                    className="ml-auto flex-shrink-0 py-3 px-6 rounded-2xl text-sm font-semibold text-white transition-colors active:opacity-80"
+                    style={{ backgroundColor: primary }}
+                  >
+                    + Sepete Ekle
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

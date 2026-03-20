@@ -28,6 +28,7 @@ export async function PATCH(
       data: {
         name: body.name?.trim() ?? existing.name,
         description: body.description !== undefined ? body.description?.trim() ?? null : existing.description,
+        imageUrl: body.imageUrl !== undefined ? body.imageUrl?.trim() || null : existing.imageUrl,
         isActive: body.isActive ?? existing.isActive,
         sortOrder: body.sortOrder ?? existing.sortOrder,
       },

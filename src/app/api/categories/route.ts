@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!restaurantId) return unauthorized();
 
   try {
-    const { menuId, name, description } = await req.json();
+    const { menuId, name, description, imageUrl } = await req.json();
     if (!menuId || !name?.trim()) return badRequest("menuId ve name zorunludur.");
 
     // Menünün bu restorana ait olduğunu doğrula
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     const count = await prisma.category.count({ where: { menuId } });
     const category = await prisma.category.create({
-      data: { menuId, name: name.trim(), description: description?.trim() ?? null, sortOrder: count },
+      data: { menuId, name: name.trim(), description: description?.trim() ?? null, imageUrl: imageUrl?.trim() || null, sortOrder: count },
     });
 
     return NextResponse.json<ApiResponse>({ success: true, data: { category } }, { status: 201 });

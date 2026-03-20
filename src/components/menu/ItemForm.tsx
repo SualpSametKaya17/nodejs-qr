@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { ImageUpload } from "./ImageUpload";
 
 interface ItemFormProps {
   initial?: {
@@ -19,6 +20,7 @@ interface ItemFormProps {
 export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "");
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,7 +32,7 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
         name: form.get("name"),
         description: form.get("description"),
         price: form.get("price"),
-        imageUrl: form.get("imageUrl"),
+        imageUrl: imageUrl || null,
         calories: form.get("calories"),
         allergens: form.get("allergens"),
         isPopular: form.get("isPopular") === "on",
@@ -47,19 +49,26 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
       )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Ürün Görseli</label>
+        <ImageUpload currentUrl={initial?.imageUrl ?? null} onUpload={setImageUrl} />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Ürün Adı *</label>
+        <input
+          name="name"
+          required
+          defaultValue={initial?.name ?? ""}
+          placeholder="Örn: Adana Kebap"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Ürün Adı *</label>
-          <input
-            name="name"
-            required
-            defaultValue={initial?.name ?? ""}
-            placeholder="Örn: Adana Kebap"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fiyat (₺) *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Fiyat *</label>
           <input
             name="price"
             type="number"
@@ -83,6 +92,7 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
           />
         </div>
       </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Açıklama</label>
         <textarea
@@ -93,16 +103,7 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Resim URL</label>
-        <input
-          name="imageUrl"
-          type="url"
-          defaultValue={initial?.imageUrl ?? ""}
-          placeholder="https://..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Alerjenler</label>
         <input
@@ -112,6 +113,7 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
+
       <label className="flex items-center gap-2 cursor-pointer">
         <input
           type="checkbox"
@@ -121,6 +123,7 @@ export function ItemForm({ initial, onSubmit, onCancel }: ItemFormProps) {
         />
         <span className="text-sm text-gray-700">Popüler ürün olarak işaretle</span>
       </label>
+
       <div className="flex gap-3 pt-1">
         <button
           type="button"

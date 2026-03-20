@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { ImageUpload } from "./ImageUpload";
 
 interface CategoryFormProps {
-  initial?: { name: string; description?: string | null };
-  onSubmit: (data: { name: string; description: string }) => Promise<void>;
+  initial?: { name: string; description?: string | null; imageUrl?: string | null };
+  onSubmit: (data: { name: string; description: string; imageUrl: string }) => Promise<void>;
   onCancel: () => void;
 }
 
 export function CategoryForm({ initial, onSubmit, onCancel }: CategoryFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "");
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -21,6 +23,7 @@ export function CategoryForm({ initial, onSubmit, onCancel }: CategoryFormProps)
       await onSubmit({
         name: form.get("name") as string,
         description: form.get("description") as string,
+        imageUrl,
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Hata oluştu.");
@@ -34,6 +37,12 @@ export function CategoryForm({ initial, onSubmit, onCancel }: CategoryFormProps)
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
       )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Görseli</label>
+        <ImageUpload currentUrl={initial?.imageUrl ?? null} onUpload={setImageUrl} />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Adı *</label>
         <input
@@ -44,6 +53,7 @@ export function CategoryForm({ initial, onSubmit, onCancel }: CategoryFormProps)
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Açıklama</label>
         <textarea
@@ -54,6 +64,7 @@ export function CategoryForm({ initial, onSubmit, onCancel }: CategoryFormProps)
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
       </div>
+
       <div className="flex gap-3 pt-1">
         <button
           type="button"

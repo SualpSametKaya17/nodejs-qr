@@ -26,6 +26,12 @@ export async function GET(
         items: {
           where: { isActive: true },
           orderBy: { sortOrder: "asc" },
+          include: {
+            modifierGroups: {
+              include: { modifiers: { where: { isActive: true }, orderBy: { sortOrder: "asc" } } },
+              orderBy: { sortOrder: "asc" },
+            },
+          },
         },
       },
     });

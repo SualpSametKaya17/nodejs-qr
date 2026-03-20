@@ -2,6 +2,21 @@
 
 import { useEffect, useState, useRef } from "react";
 
+interface ItemModifier {
+  id: number;
+  name: string;
+  price: number | string;
+  isDefault: boolean;
+}
+
+interface ItemModifierGroup {
+  id: number;
+  name: string;
+  type: string; // "single" | "multiple"
+  required: boolean;
+  modifiers: ItemModifier[];
+}
+
 interface MenuItem {
   id: number;
   name: string;
@@ -11,6 +26,7 @@ interface MenuItem {
   calories: number | null;
   allergens: string | null;
   isPopular: boolean;
+  modifierGroups: ItemModifierGroup[];
 }
 
 interface Category {
@@ -38,12 +54,21 @@ interface Menu {
   categories: Category[];
 }
 
-interface CartItem {
-  menuItemId: number;
+interface SelectedModifier {
+  modifierId: number;
   name: string;
   price: number;
+}
+
+interface CartItem {
+  cartKey: string; // menuItemId + sorted modifierIds
+  menuItemId: number;
+  name: string;
+  basePrice: number;
+  modifierPrice: number;
   quantity: number;
   imageUrl: string | null;
+  selectedModifiers: SelectedModifier[];
 }
 
 interface Props {
@@ -63,7 +88,7 @@ function CardItem({
 }: {
   item: MenuItem; primary: string; currencySymbol: string;
   onSelect: (i: MenuItem) => void; onAdd: (i: MenuItem) => void;
-  cartQty: number; onUpdateQty: (id: number, delta: number) => void;
+  cartQty: number; cartKey: string; onUpdateQty: (key: string, delta: number) => void;
 }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -103,7 +128,7 @@ function CardItem({
             >+</button>
           ) : (
             <div className="flex items-center gap-1.5 rounded-xl p-1" style={{ backgroundColor: primary + "18" }}>
-              <button onClick={() => onUpdateQty(item.id, -1)} className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center font-bold text-gray-700">−</button>
+              <button onClick={() => onUpdateQty(cartKey, -1)} className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center font-bold text-gray-700">−</button>
               <span className="text-sm font-bold w-5 text-center" style={{ color: primary }}>{cartQty}</span>
               <button onClick={() => onAdd(item)} className="w-7 h-7 rounded-lg text-white flex items-center justify-center font-bold shadow-sm" style={{ backgroundColor: primary }}>+</button>
             </div>
@@ -120,7 +145,7 @@ function GridItem({
 }: {
   item: MenuItem; primary: string; currencySymbol: string;
   onSelect: (i: MenuItem) => void; onAdd: (i: MenuItem) => void;
-  cartQty: number; onUpdateQty: (id: number, delta: number) => void;
+  cartQty: number; cartKey: string; onUpdateQty: (key: string, delta: number) => void;
 }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
@@ -146,7 +171,7 @@ function GridItem({
             <button onClick={() => onAdd(item)} className="w-7 h-7 rounded-lg text-white flex items-center justify-center font-bold text-base" style={{ backgroundColor: primary }}>+</button>
           ) : (
             <div className="flex items-center gap-0.5">
-              <button onClick={() => onUpdateQty(item.id, -1)} className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-600 text-sm">−</button>
+              <button onClick={() => onUpdateQty(cartKey, -1)} className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-600 text-sm">−</button>
               <span className="text-xs font-bold w-5 text-center" style={{ color: primary }}>{cartQty}</span>
               <button onClick={() => onAdd(item)} className="w-6 h-6 rounded-lg text-white flex items-center justify-center font-bold text-sm" style={{ backgroundColor: primary }}>+</button>
             </div>
@@ -163,7 +188,7 @@ function ListItem({
 }: {
   item: MenuItem; primary: string; currencySymbol: string;
   onSelect: (i: MenuItem) => void; onAdd: (i: MenuItem) => void;
-  cartQty: number; onUpdateQty: (id: number, delta: number) => void;
+  cartQty: number; cartKey: string; onUpdateQty: (key: string, delta: number) => void;
 }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
@@ -206,6 +231,8 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const [activeCat, setActiveCat] = useState<number | null>(menu.categories[0]?.id ?? null);
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  // Seçilen modifierlar (item detail modalında)
+  const [selectedMods, setSelectedMods] = useState<Record<number, number[]>>({}); // groupId → modifierIds
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [orderNote, setOrderNote] = useState("");
@@ -245,25 +272,65 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
     catRefs.current[catId]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function addToCart(item: MenuItem) {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.menuItemId === item.id);
-      if (existing) {
-        return prev.map((c) => c.menuItemId === item.id ? { ...c, quantity: c.quantity + 1 } : c);
+  // item açıldığında default modifier seçimlerini hazırla
+  function openItem(item: MenuItem) {
+    const defaults: Record<number, number[]> = {};
+    for (const g of item.modifierGroups) {
+      const defaultMods = g.modifiers.filter((m) => m.isDefault).map((m) => m.id);
+      if (defaultMods.length > 0) defaults[g.id] = defaultMods;
+    }
+    setSelectedMods(defaults);
+    setSelectedItem(item);
+  }
+
+  function toggleMod(group: ItemModifierGroup, modId: number) {
+    setSelectedMods((prev) => {
+      const current = prev[group.id] ?? [];
+      if (group.type === "single") {
+        return { ...prev, [group.id]: [modId] };
       }
-      return [...prev, { menuItemId: item.id, name: item.name, price: Number(item.price), quantity: 1, imageUrl: item.imageUrl }];
+      // multiple
+      if (current.includes(modId)) {
+        return { ...prev, [group.id]: current.filter((id) => id !== modId) };
+      }
+      return { ...prev, [group.id]: [...current, modId] };
     });
   }
 
-  function updateQty(menuItemId: number, delta: number) {
+  function buildCartEntry(item: MenuItem, mods: Record<number, number[]>): CartItem {
+    const allModifiers = item.modifierGroups.flatMap((g) =>
+      g.modifiers.filter((m) => (mods[g.id] ?? []).includes(m.id))
+    );
+    const selectedModifiers: SelectedModifier[] = allModifiers.map((m) => ({
+      modifierId: m.id, name: m.name, price: Number(m.price),
+    }));
+    const modifierPrice = selectedModifiers.reduce((s, m) => s + m.price, 0);
+    const cartKey = `${item.id}_${selectedModifiers.map((m) => m.modifierId).sort().join("-")}`;
+    return {
+      cartKey, menuItemId: item.id, name: item.name,
+      basePrice: Number(item.price), modifierPrice, quantity: 1,
+      imageUrl: item.imageUrl, selectedModifiers,
+    };
+  }
+
+  function addToCart(item: MenuItem, mods?: Record<number, number[]>) {
+    const entry = buildCartEntry(item, mods ?? {});
+    setCart((prev) => {
+      const existing = prev.find((c) => c.cartKey === entry.cartKey);
+      if (existing) return prev.map((c) => c.cartKey === entry.cartKey ? { ...c, quantity: c.quantity + 1 } : c);
+      return [...prev, entry];
+    });
+  }
+
+  function updateQty(cartKey: string, delta: number) {
     setCart((prev) =>
-      prev.map((c) => c.menuItemId === menuItemId ? { ...c, quantity: c.quantity + delta } : c)
+      prev.map((c) => c.cartKey === cartKey ? { ...c, quantity: c.quantity + delta } : c)
         .filter((c) => c.quantity > 0)
     );
   }
 
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
-  const cartTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+  const cartTotal = cart.reduce((s, c) => s + (c.basePrice + c.modifierPrice) * c.quantity, 0);
 
   async function placeOrder() {
     if (cart.length === 0) return;
@@ -276,7 +343,12 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
           restaurantId,
           tableNumber,
           customerNote: orderNote.trim() || null,
-          items: cart.map((c) => ({ menuItemId: c.menuItemId, quantity: c.quantity, unitPrice: c.price })),
+          items: cart.map((c) => ({
+            menuItemId: c.menuItemId,
+            quantity: c.quantity,
+            unitPrice: c.basePrice,
+            selectedModifiers: c.selectedModifiers,
+          })),
         }),
       });
       const json = await res.json();
@@ -306,15 +378,22 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
         .filter((c) => c.items.length > 0)
     : menu.categories;
 
-  const itemProps = (item: MenuItem) => ({
-    item,
-    primary,
-    currencySymbol,
-    onSelect: setSelectedItem,
-    onAdd: addToCart,
-    cartQty: cart.find((c) => c.menuItemId === item.id)?.quantity ?? 0,
-    onUpdateQty: updateQty,
-  });
+  const itemProps = (item: MenuItem) => {
+    const cartEntry = cart.find((c) => c.menuItemId === item.id);
+    return {
+      item,
+      primary,
+      currencySymbol,
+      onSelect: openItem,
+      onAdd: (i: MenuItem) => {
+        if (i.modifierGroups.length > 0) { openItem(i); return; }
+        addToCart(i, {});
+      },
+      cartQty: cartEntry?.quantity ?? 0,
+      cartKey: cartEntry?.cartKey ?? "",
+      onUpdateQty: updateQty,
+    };
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -482,7 +561,76 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                 {selectedItem.calories && <span>🔥 {selectedItem.calories} kcal</span>}
                 {selectedItem.allergens && <span>⚠️ Alerjenler: {selectedItem.allergens}</span>}
               </div>
-              <div className="flex gap-3 pt-2">
+
+              {/* Modifier grupları */}
+              {selectedItem.modifierGroups.length > 0 && (
+                <div className="space-y-4 pt-1">
+                  {selectedItem.modifierGroups.map((group) => (
+                    <div key={group.id}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-semibold text-gray-800">{group.name}</span>
+                        {group.required && (
+                          <span className="text-xs bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full font-medium">Zorunlu</span>
+                        )}
+                        <span className="text-xs text-gray-400 ml-auto">
+                          {group.type === "single" ? "Tek seçim" : "Çoklu seçim"}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {group.modifiers.map((mod) => {
+                          const selected = (selectedMods[group.id] ?? []).includes(mod.id);
+                          return (
+                            <button
+                              key={mod.id}
+                              type="button"
+                              onClick={() => toggleMod(group, mod.id)}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
+                                selected
+                                  ? "border-current bg-opacity-10"
+                                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                              }`}
+                              style={selected ? { borderColor: primary, backgroundColor: primary + "12" } : {}}
+                            >
+                              <span
+                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                  selected ? "border-current" : "border-gray-300"
+                                }`}
+                                style={selected ? { borderColor: primary, backgroundColor: primary } : {}}
+                              >
+                                {selected && <span className="text-white text-xs font-bold">✓</span>}
+                              </span>
+                              <span className="flex-1 text-sm font-medium text-gray-800">{mod.name}</span>
+                              {Number(mod.price) > 0 && (
+                                <span className="text-sm font-semibold flex-shrink-0" style={{ color: primary }}>
+                                  +{currencySymbol}{Number(mod.price).toFixed(2)}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Fiyat özeti */}
+              {selectedItem.modifierGroups.length > 0 && (() => {
+                const modTotal = selectedItem.modifierGroups.flatMap(g =>
+                  g.modifiers.filter(m => (selectedMods[g.id] ?? []).includes(m.id))
+                ).reduce((s, m) => s + Number(m.price), 0);
+                const total = Number(selectedItem.price) + modTotal;
+                return (
+                  <div className="flex items-center justify-between py-2 border-t border-gray-100">
+                    <span className="text-sm text-gray-500">Toplam</span>
+                    <span className="text-base font-bold" style={{ color: primary }}>
+                      {currencySymbol}{total.toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              <div className="flex gap-3 pt-1">
                 <button
                   onClick={() => setSelectedItem(null)}
                   className="flex-1 py-3.5 rounded-2xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
@@ -490,7 +638,15 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                   Kapat
                 </button>
                 <button
-                  onClick={() => { addToCart(selectedItem); setSelectedItem(null); }}
+                  onClick={() => {
+                    // Zorunlu grup kontrolü
+                    const missing = selectedItem.modifierGroups.find(
+                      (g) => g.required && (selectedMods[g.id] ?? []).length === 0
+                    );
+                    if (missing) { alert(`"${missing.name}" zorunlu, lütfen seçin.`); return; }
+                    addToCart(selectedItem, selectedMods);
+                    setSelectedItem(null);
+                  }}
                   className="flex-1 py-3.5 rounded-2xl text-sm font-semibold text-white transition-colors active:opacity-80"
                   style={{ backgroundColor: primary }}
                 >
@@ -531,21 +687,26 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
             {/* Items */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {cart.map((c) => (
-                <div key={c.menuItemId} className="flex items-center gap-3">
+                <div key={c.cartKey} className="flex items-start gap-3">
                   {c.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={c.imageUrl} alt={c.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{c.name}</p>
-                    <p className="text-sm font-bold" style={{ color: primary }}>
-                      {currencySymbol}{(c.price * c.quantity).toFixed(2)}
+                    {c.selectedModifiers.length > 0 && (
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        {c.selectedModifiers.map((m) => m.name).join(", ")}
+                      </p>
+                    )}
+                    <p className="text-sm font-bold mt-0.5" style={{ color: primary }}>
+                      {currencySymbol}{((c.basePrice + c.modifierPrice) * c.quantity).toFixed(2)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5 p-1 rounded-xl" style={{ backgroundColor: primary + "15" }}>
-                    <button onClick={() => updateQty(c.menuItemId, -1)} className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center font-bold text-gray-700">−</button>
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl flex-shrink-0" style={{ backgroundColor: primary + "15" }}>
+                    <button onClick={() => updateQty(c.cartKey, -1)} className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center font-bold text-gray-700">−</button>
                     <span className="text-sm font-bold w-5 text-center" style={{ color: primary }}>{c.quantity}</span>
-                    <button onClick={() => addToCart({ id: c.menuItemId, name: c.name, price: c.price, imageUrl: c.imageUrl, description: null, calories: null, allergens: null, isPopular: false })} className="w-7 h-7 rounded-lg text-white shadow-sm flex items-center justify-center font-bold" style={{ backgroundColor: primary }}>+</button>
+                    <button onClick={() => updateQty(c.cartKey, 1)} className="w-7 h-7 rounded-lg text-white shadow-sm flex items-center justify-center font-bold" style={{ backgroundColor: primary }}>+</button>
                   </div>
                 </div>
               ))}
@@ -568,7 +729,9 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
             {/* Footer */}
             <div className="px-5 py-4 border-t border-gray-100 space-y-3 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Toplam ({cartCount} ürün)</span>
+                <span className="text-sm text-gray-500">
+                  Toplam ({cartCount} ürün)
+                </span>
                 <span className="text-xl font-bold text-gray-900">{currencySymbol}{cartTotal.toFixed(2)}</span>
               </div>
               <button

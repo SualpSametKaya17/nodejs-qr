@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { CategoryForm } from "@/components/menu/CategoryForm";
 import { ItemForm } from "@/components/menu/ItemForm";
+import { ModifiersModal } from "@/components/menu/ModifiersModal";
 
 interface Item {
   id: number;
@@ -43,6 +44,7 @@ type ModalState =
   | { type: "editCategory"; category: Category }
   | { type: "addItem"; categoryId: number }
   | { type: "editItem"; item: Item; categoryId: number }
+  | { type: "modifiers"; item: Item }
   | null;
 
 export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
@@ -69,7 +71,7 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
 
   const closeModal = useCallback(() => setModal(null), []);
 
-  async function handleAddCategory(data: { name: string; description: string }) {
+  async function handleAddCategory(data: { name: string; description: string; imageUrl: string }) {
     if (!selectedMenuId) return;
     const res = await fetch("/api/categories", {
       method: "POST",
@@ -82,11 +84,11 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
     closeModal();
   }
 
-  async function handleEditCategory(categoryId: number, data: { name: string; description: string }) {
+  async function handleEditCategory(categoryId: number, data: { name: string; description: string; imageUrl: string }) {
     const res = await fetch(`/api/categories/${categoryId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ name: data.name, description: data.description, imageUrl: data.imageUrl }),
     });
     const json = await res.json();
     if (!json.success) throw new Error(json.error);
@@ -265,6 +267,13 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
                           ₺{Number(item.price).toFixed(2)}
                         </span>
                         <button
+                          onClick={() => setModal({ type: "modifiers", item })}
+                          className="px-2 py-1 text-xs text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg font-medium transition-colors"
+                          title="Seçenekler"
+                        >
+                          ⚙ Seçenekler
+                        </button>
+                        <button
                           onClick={() => setModal({ type: "editItem", item, categoryId: cat.id })}
                           className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         >
@@ -344,6 +353,15 @@ export function MenuClient({ menus, initialCategories, defaultMenuId }: Props) {
           />
         )}
       </Modal>
+
+      {modal?.type === "modifiers" && (
+        <ModifiersModal
+          open={true}
+          onClose={closeModal}
+          itemId={modal.item.id}
+          itemName={modal.item.name}
+        />
+      )}
     </div>
   );
 }

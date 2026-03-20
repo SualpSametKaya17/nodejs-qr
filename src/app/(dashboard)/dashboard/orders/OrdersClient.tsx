@@ -4,12 +4,19 @@ import { useEffect, useState, useCallback, useRef } from "react";
 
 type OrderStatus = "PENDING" | "CONFIRMED" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
 
+interface OrderItemModifier {
+  id: number;
+  name: string;
+  price: number | string;
+}
+
 interface OrderItem {
   id: number;
   quantity: number;
   unitPrice: number | string;
   note: string | null;
   menuItem: { name: string; imageUrl: string | null };
+  modifiers: OrderItemModifier[];
 }
 
 interface Order {
@@ -256,12 +263,19 @@ export function OrdersClient({ initialOrders }: Props) {
               {/* Ürünler */}
               <div className="px-4 py-3 space-y-1.5">
                 {order.items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2 text-sm text-gray-700">
-                    <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">
+                  <div key={item.id} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0 mt-0.5">
                       {item.quantity}
                     </span>
-                    <span className="truncate">{item.menuItem.name}</span>
-                    <span className="ml-auto text-xs text-gray-400 flex-shrink-0">
+                    <div className="flex-1 min-w-0">
+                      <span className="truncate block">{item.menuItem.name}</span>
+                      {item.modifiers.length > 0 && (
+                        <span className="text-xs text-gray-400">
+                          {item.modifiers.map((m) => m.name).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">
                       ₺{(Number(item.unitPrice) * item.quantity).toFixed(2)}
                     </span>
                   </div>

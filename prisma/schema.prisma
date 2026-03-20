@@ -112,8 +112,9 @@ model MenuItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
+  category       Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
+  modifierGroups ItemModifierGroup[]
 
   @@map("menu_items")
 }
@@ -162,10 +163,56 @@ model OrderItem {
   unitPrice  Decimal @db.Decimal(10, 2)
   note       String? @db.Text
 
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+  order     Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem  MenuItem            @relation(fields: [menuItemId], references: [id])
+  modifiers OrderItemModifier[]
 
   @@map("order_items")
+}
+
+// ─── MODIFIER GROUPS ──────────────────────────────────────────────────────────
+model ItemModifierGroup {
+  id         Int      @id @default(autoincrement())
+  menuItemId Int
+  name       String   @db.VarChar(255)
+  type       String   @default("multiple") @db.VarChar(20) // single | multiple
+  required   Boolean  @default(false)
+  minSelect  Int      @default(0)
+  maxSelect  Int      @default(0) // 0 = unlimited
+  sortOrder  Int      @default(0)
+
+  menuItem  MenuItem       @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  modifiers ItemModifier[]
+
+  @@map("item_modifier_groups")
+}
+
+model ItemModifier {
+  id        Int     @id @default(autoincrement())
+  groupId   Int
+  name      String  @db.VarChar(255)
+  price     Decimal @default(0) @db.Decimal(10, 2)
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  group              ItemModifierGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  orderItemModifiers OrderItemModifier[]
+
+  @@map("item_modifiers")
+}
+
+model OrderItemModifier {
+  id          Int     @id @default(autoincrement())
+  orderItemId Int
+  modifierId  Int
+  name        String  @db.VarChar(255)
+  price       Decimal @db.Decimal(10, 2)
+
+  orderItem OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  modifier  ItemModifier @relation(fields: [modifierId], references: [id])
+
+  @@map("order_item_modifiers")
 }
 
 enum OrderStatus {

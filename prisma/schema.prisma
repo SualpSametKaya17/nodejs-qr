@@ -126,9 +126,10 @@ model QrCode {
   menuId       Int
   label        String   @db.VarChar(100)
   tableNumber  String?  @db.VarChar(20)
+  url          String?  @db.VarChar(500)
   qrImageUrl   String?  @db.VarChar(500)
   shortUrl     String   @unique @db.VarChar(50)
-  scansCount   Int      @default(0)
+  scanCount    Int      @default(0)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 

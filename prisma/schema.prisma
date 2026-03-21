@@ -43,7 +43,8 @@ model Restaurant {
   trialEndsAt      DateTime?
   primaryColor     String?  @db.VarChar(20)
   language         String   @default("tr") @db.VarChar(10)
-  subscriptionPlan String   @default("starter") @db.VarChar(50)
+  subscriptionPlan   String   @default("starter") @db.VarChar(50)
+  subscriptionStatus String   @default("active") @db.VarChar(20)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

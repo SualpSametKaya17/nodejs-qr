@@ -20,7 +20,7 @@ interface IncomingItem {
 
 export async function POST(req: NextRequest) {
   try {
-    const { restaurantId, tableNumber, customerNote, items } = await req.json();
+    const { restaurantId, tableNumber, customerNote, customerId, pointsToRedeem, items } = await req.json();
 
     if (!restaurantId || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json<ApiResponse>(
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     const restaurant = await prisma.restaurant.findUnique({
       where: { id: restaurantId, isActive: true },
-      select: { id: true },
+      select: { id: true, loyaltyEnabled: true, pointsPerTL: true, pointValueTL: true },
     });
     if (!restaurant) {
       return NextResponse.json<ApiResponse>({ success: false, error: "Restoran bulunamadı." }, { status: 404 });
@@ -52,15 +52,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json<ApiResponse>({ success: false, error: "Geçerli ürün bulunamadı." }, { status: 400 });
     }
 
-    // Toplam hesapla (base fiyat + modifier fiyatları)
-    const totalAmount = validItems.reduce((sum: number, i: IncomingItem) => {
+    // Ara toplam
+    const subtotal = validItems.reduce((sum: number, i: IncomingItem) => {
       const modTotal = (i.selectedModifiers ?? []).reduce((s: number, m: IncomingModifier) => s + (m.price ?? 0), 0);
       return sum + i.quantity * (i.unitPrice + modTotal);
     }, 0);
 
+    // Puan indirimi hesapla
+    let pointsUsed = 0;
+    let discount = 0;
+
+    if (restaurant.loyaltyEnabled && customerId && pointsToRedeem && pointsToRedeem > 0) {
+      const customer = await prisma.customer.findUnique({
+        where: { id: customerId, restaurantId },
+        select: { id: true, points: true },
+      });
+      if (customer && customer.points >= pointsToRedeem) {
+        pointsUsed = pointsToRedeem;
+        discount = Math.min(pointsUsed * restaurant.pointValueTL, subtotal);
+      }
+    }
+
+    const totalAmount = Math.max(0, subtotal - discount);
+
+    // Puan kazanımı
+    const pointsEarned = restaurant.loyaltyEnabled
+      ? Math.floor(totalAmount * restaurant.pointsPerTL)
+      : 0;
+
     const order = await prisma.order.create({
       data: {
         restaurantId,
+        customerId: customerId ?? null,
         tableNumber: tableNumber ? String(tableNumber) : null,
         customerNote: customerNote?.trim() || null,
         totalAmount,
@@ -90,7 +113,46 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json<ApiResponse>({ success: true, data: { order } }, { status: 201 });
+    // Müşteri puanlarını güncelle
+    if (customerId && restaurant.loyaltyEnabled && (pointsUsed > 0 || pointsEarned > 0)) {
+      await prisma.customer.update({
+        where: { id: customerId },
+        data: {
+          points: { decrement: pointsUsed },
+        },
+      });
+      if (pointsEarned > 0) {
+        await prisma.customer.update({
+          where: { id: customerId },
+          data: {
+            points: { increment: pointsEarned },
+            totalSpent: { increment: totalAmount },
+            orderCount: { increment: 1 },
+          },
+        });
+      } else {
+        await prisma.customer.update({
+          where: { id: customerId },
+          data: {
+            totalSpent: { increment: totalAmount },
+            orderCount: { increment: 1 },
+          },
+        });
+      }
+    } else if (customerId) {
+      await prisma.customer.update({
+        where: { id: customerId },
+        data: {
+          totalSpent: { increment: totalAmount },
+          orderCount: { increment: 1 },
+        },
+      });
+    }
+
+    return NextResponse.json<ApiResponse>(
+      { success: true, data: { order, pointsEarned } },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("[public/orders POST]", err);
     return NextResponse.json<ApiResponse>({ success: false, error: "Sunucu hatası." }, { status: 500 });

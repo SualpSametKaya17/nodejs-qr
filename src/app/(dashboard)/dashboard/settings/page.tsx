@@ -40,6 +40,9 @@ export default async function SettingsPage({ searchParams }: Props) {
       language: true,
       subscriptionPlan: true,
       subscriptionStatus: true,
+      loyaltyEnabled: true,
+      pointsPerTL: true,
+      pointValueTL: true,
     },
   });
 

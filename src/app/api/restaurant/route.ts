@@ -14,6 +14,7 @@ export async function PATCH(req: NextRequest) {
     const allowed = [
       "name", "logoUrl", "primaryColor", "menuStyle",
       "address", "phone", "currency", "language",
+      "loyaltyEnabled", "pointsPerTL", "pointValueTL",
     ] as const;
 
     const data: Record<string, unknown> = {};
@@ -39,6 +40,7 @@ export async function PATCH(req: NextRequest) {
         id: true, name: true, logoUrl: true, primaryColor: true, menuStyle: true,
         address: true, phone: true, currency: true, language: true,
         subscriptionPlan: true, subscriptionStatus: true,
+        loyaltyEnabled: true, pointsPerTL: true, pointValueTL: true,
       },
     });
 

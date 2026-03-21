@@ -37,6 +37,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         select: {
           name: true, logoUrl: true, primaryColor: true, menuStyle: true,
           address: true, phone: true, currency: true,
+          loyaltyEnabled: true, pointsPerTL: true, pointValueTL: true,
         },
       },
       categories: {

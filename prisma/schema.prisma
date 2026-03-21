@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── PLANS ───────────────────────────────────────────────────────────────────
@@ -45,6 +44,9 @@ model Restaurant {
   role               String   @default("restaurant") @db.VarChar(20)
   cartEnabled        Boolean  @default(true)
   orderingEnabled    Boolean  @default(true)
+  loyaltyEnabled     Boolean  @default(false)
+  pointsPerTL        Float    @default(1)
+  pointValueTL       Float    @default(0.01)
   subscriptionPlan   String   @default("free") @db.VarChar(50)
   subscriptionStatus String   @default("active") @db.VarChar(50)
   isActive           Boolean  @default(true)

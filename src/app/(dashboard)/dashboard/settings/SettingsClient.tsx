@@ -16,13 +16,16 @@ interface Restaurant {
   language: string | null;
   subscriptionPlan: string;
   subscriptionStatus: string;
+  loyaltyEnabled: boolean;
+  pointsPerTL: number;
+  pointValueTL: number;
 }
 
 interface Props {
   restaurant: Restaurant;
 }
 
-type Section = "profile" | "appearance" | "password";
+type Section = "profile" | "appearance" | "loyalty" | "password";
 
 function SectionCard({
   title,
@@ -70,6 +73,9 @@ export function SettingsClient({ restaurant }: Props) {
   const [color, setColor] = useState(restaurant.primaryColor ?? "#2563eb");
   const [menuStyle, setMenuStyle] = useState(restaurant.menuStyle ?? "card");
   const [logoUrl, setLogoUrl] = useState(restaurant.logoUrl ?? "");
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(restaurant.loyaltyEnabled);
+  const [pointsPerTL, setPointsPerTL] = useState(String(restaurant.pointsPerTL));
+  const [pointValueTL, setPointValueTL] = useState(String(restaurant.pointValueTL));
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -113,6 +119,24 @@ export function SettingsClient({ restaurant }: Props) {
     showToast(json.success ? "Görünüm kaydedildi." : json.error, json.success);
   }
 
+  async function handleLoyaltySave(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const pptl = parseFloat(pointsPerTL);
+    const pvtl = parseFloat(pointValueTL);
+    if (isNaN(pptl) || pptl <= 0 || isNaN(pvtl) || pvtl <= 0) {
+      showToast("Geçerli pozitif sayı girin.", false); return;
+    }
+    setSaving(true);
+    const res = await fetch("/api/restaurant", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ loyaltyEnabled, pointsPerTL: pptl, pointValueTL: pvtl }),
+    });
+    setSaving(false);
+    const json = await res.json();
+    showToast(json.success ? "Sadakat programı kaydedildi." : json.error, json.success);
+  }
+
   async function handlePasswordSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -144,6 +168,7 @@ export function SettingsClient({ restaurant }: Props) {
   const tabs: { key: Section; label: string }[] = [
     { key: "profile", label: "Profil" },
     { key: "appearance", label: "Görünüm" },
+    { key: "loyalty", label: "Sadakat" },
     { key: "password", label: "Şifre" },
   ];
 
@@ -325,6 +350,83 @@ export function SettingsClient({ restaurant }: Props) {
                 ))}
               </div>
             </Field>
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {saving ? "Kaydediliyor..." : "Kaydet"}
+              </button>
+            </div>
+          </form>
+        </SectionCard>
+      )}
+
+      {/* Sadakat Programı */}
+      {activeSection === "loyalty" && (
+        <SectionCard
+          title="Sadakat Programı"
+          description="Müşterilerin puan kazanma ve harcama oranlarını belirleyin"
+        >
+          <form onSubmit={handleLoyaltySave} className="space-y-5">
+            {/* Toggle */}
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Sadakat Programı</p>
+                <p className="text-xs text-gray-400 mt-0.5">Aktif olduğunda müşteriler sipariş verdikçe puan kazanır</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoyaltyEnabled((v) => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${loyaltyEnabled ? "bg-blue-600" : "bg-gray-200"}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform ${loyaltyEnabled ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </button>
+            </div>
+
+            {loyaltyEnabled && (
+              <>
+                <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700 space-y-1">
+                  <p className="font-semibold">Örnek hesap:</p>
+                  <p>100 TL sipariş → {Math.floor(100 * parseFloat(pointsPerTL) || 0)} puan kazanılır</p>
+                  <p>1000 puan kullanım → {(1000 * parseFloat(pointValueTL) || 0).toFixed(2)} TL indirim</p>
+                </div>
+
+                <Field label="1 TL harcamada kaç puan kazanılır?">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={pointsPerTL}
+                      onChange={(e) => setPointsPerTL(e.target.value)}
+                      className={inputCls()}
+                    />
+                    <span className="text-sm text-gray-500 whitespace-nowrap">puan / TL</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Örn: 1 → 1 TL = 1 puan &nbsp;|&nbsp; 0.5 → 1 TL = 0.5 puan</p>
+                </Field>
+
+                <Field label="1 puan kaç TL indirim sağlar?">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      value={pointValueTL}
+                      onChange={(e) => setPointValueTL(e.target.value)}
+                      className={inputCls()}
+                    />
+                    <span className="text-sm text-gray-500 whitespace-nowrap">TL / puan</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Örn: 0.01 → 100 puan = 1 TL &nbsp;|&nbsp; 0.1 → 10 puan = 1 TL</p>
+                </Field>
+              </>
+            )}
+
             <div className="flex justify-end pt-1">
               <button
                 type="submit"

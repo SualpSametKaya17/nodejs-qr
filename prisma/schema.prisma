@@ -39,10 +39,13 @@ model Restaurant {
   coverUrl     String?  @db.VarChar(500)
   currency     String   @default("TRY") @db.VarChar(3)
   timezone     String   @default("Europe/Istanbul") @db.VarChar(50)
-  isActive     Boolean  @default(true)
-  trialEndsAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive         Boolean  @default(true)
+  trialEndsAt      DateTime?
+  primaryColor     String?  @db.VarChar(20)
+  language         String   @default("tr") @db.VarChar(10)
+  subscriptionPlan String   @default("starter") @db.VarChar(50)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   plan     Plan        @relation(fields: [planId], references: [id])
   menus          Menu[]

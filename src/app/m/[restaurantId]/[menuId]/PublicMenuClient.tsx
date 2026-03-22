@@ -84,6 +84,7 @@ interface Props {
   restaurantId: number;
   tableNumber: string | null;
   qrId: string | null;
+  posEnabled?: boolean;
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -329,7 +330,7 @@ interface CustomerInfo {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Props) {
+export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId, posEnabled = false }: Props) {
   const [activeCat, setActiveCat] = useState<number | null>(menu.categories[0]?.id ?? null);
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -355,6 +356,14 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const [authPassword, setAuthPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
+
+  // Ödeme yöntemi
+  const [payMethod, setPayMethod] = useState<"cash" | "online">("cash");
+  const [cardPan, setCardPan] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCv2, setCardCv2] = useState("");
+  const [cardType, setCardType] = useState("1");
+  const [payError, setPayError] = useState("");
 
   const fetchCustomer = useCallback(async () => {
     try {
@@ -532,6 +541,13 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
 
   async function placeOrder() {
     if (cart.length === 0) return;
+
+    // Online ödeme akışı
+    if (payMethod === "online" && posEnabled) {
+      await initiateOnlinePayment();
+      return;
+    }
+
     setOrdering(true);
     try {
       const res = await fetch("/api/public/orders", {
@@ -566,6 +582,87 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
       setOrdering(false);
     }
   }
+
+  async function initiateOnlinePayment() {
+    setPayError("");
+
+    // Kart validasyon
+    const rawPan = cardPan.replace(/\s/g, "");
+    if (rawPan.length < 13) { setPayError("Geçerli bir kart numarası girin."); return; }
+    const expiryParts = cardExpiry.split("/");
+    if (expiryParts.length !== 2 || expiryParts[0].length !== 2 || expiryParts[1].length !== 2) {
+      setPayError("Son kullanma tarihi AA/YY formatında olmalıdır."); return;
+    }
+    if (!cardCv2 || cardCv2.length < 3) { setPayError("CVV/CVC girin."); return; }
+
+    setOrdering(true);
+    try {
+      const res = await fetch("/api/payment/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurantId,
+          tableNumber,
+          customerNote: orderNote.trim() || null,
+          customerId: customer?.id ?? null,
+          pointsToRedeem: usePoints ? pointsToRedeem : 0,
+          items: cart.map((c) => ({
+            menuItemId: c.menuItemId,
+            quantity: c.quantity,
+            unitPrice: c.basePrice,
+            selectedModifiers: c.selectedModifiers,
+          })),
+          cardPan: rawPan,
+          cardExpMonth: expiryParts[0],
+          cardExpYear: "20" + expiryParts[1],
+          cardCv2,
+          cardType,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setPayError(json.error ?? "Ödeme başlatılamadı.");
+        return;
+      }
+
+      // 3D formunu sayfaya ekleyip auto-submit et
+      const div = document.createElement("div");
+      div.innerHTML = json.data.formHtml;
+      document.body.appendChild(div);
+      // Eğer script yoksa form'u manuel submit et
+      const form = div.querySelector("form") as HTMLFormElement | null;
+      if (form) form.submit();
+    } catch {
+      setPayError("Bağlantı hatası. Lütfen tekrar deneyin.");
+    } finally {
+      setOrdering(false);
+    }
+  }
+
+  function detectCardType(pan: string): string {
+    const clean = pan.replace(/\s/g, "");
+    if (/^9792/.test(clean)) return "3"; // Troy
+    if (/^4/.test(clean)) return "1";   // Visa
+    if (/^(5[1-5]|2[2-7])/.test(clean)) return "2"; // MasterCard
+    return "1";
+  }
+
+  function formatCardNumber(val: string): string {
+    const v = val.replace(/\D/g, "").substring(0, 16);
+    return v.replace(/(.{4})/g, "$1 ").trim();
+  }
+
+  function formatExpiry(val: string): string {
+    const v = val.replace(/\D/g, "").substring(0, 4);
+    if (v.length >= 3) return v.substring(0, 2) + "/" + v.substring(2);
+    return v;
+  }
+
+  const CARD_TYPE_LABELS: Record<string, string> = {
+    "1": "Visa",
+    "2": "MasterCard",
+    "3": "Troy",
+  };
 
   const filtered = search.trim()
     ? menu.categories
@@ -1199,13 +1296,92 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                 </p>
               )}
 
+              {/* Ödeme yöntemi seçici */}
+              {posEnabled && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Ödeme Yöntemi</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["cash", "online"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => { setPayMethod(m); setPayError(""); }}
+                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
+                          payMethod === m
+                            ? "border-current text-white"
+                            : "border-gray-200 text-gray-600 bg-white"
+                        }`}
+                        style={payMethod === m ? { backgroundColor: primary, borderColor: primary } : {}}
+                      >
+                        {m === "cash" ? "💵 Nakit / POS" : "💳 Online Öde"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Kart formu */}
+              {posEnabled && payMethod === "online" && (
+                <div className="space-y-2.5 border border-gray-200 rounded-2xl p-3.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-semibold text-gray-700">Kart Bilgileri</p>
+                    {cardType !== "1" || cardPan.replace(/\s/g, "").length > 0 ? (
+                      <span className="text-xs font-semibold text-gray-500">{CARD_TYPE_LABELS[cardType]}</span>
+                    ) : null}
+                  </div>
+
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={cardPan}
+                    onChange={(e) => {
+                      const formatted = formatCardNumber(e.target.value);
+                      setCardPan(formatted);
+                      setCardType(detectCardType(formatted));
+                    }}
+                    placeholder="1234 5678 9012 3456"
+                    maxLength={19}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:border-gray-400 tracking-wider"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={cardExpiry}
+                      onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                      placeholder="AA/YY"
+                      maxLength={5}
+                      className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:border-gray-400"
+                    />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={cardCv2}
+                      onChange={(e) => setCardCv2(e.target.value.replace(/\D/g, "").substring(0, 4))}
+                      placeholder="CVV"
+                      maxLength={4}
+                      className="border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:border-gray-400"
+                    />
+                  </div>
+                  {payError && (
+                    <p className="text-xs text-red-500 text-center">{payError}</p>
+                  )}
+                  <p className="text-xs text-center text-gray-400">🔒 3D Secure ile güvenli ödeme</p>
+                </div>
+              )}
+
               <button
                 onClick={placeOrder}
                 disabled={ordering}
                 className="w-full py-4 rounded-2xl text-white font-bold text-base transition-opacity disabled:opacity-60 active:opacity-80"
                 style={{ backgroundColor: primary }}
               >
-                {ordering ? "Gönderiliyor..." : "Sipariş Ver"}
+                {ordering
+                  ? payMethod === "online" ? "Ödeme hazırlanıyor..." : "Gönderiliyor..."
+                  : payMethod === "online" && posEnabled
+                  ? `💳 Ödeme Yap — ${currencySymbol}${cartTotal.toFixed(2)}`
+                  : "Sipariş Ver"
+                }
               </button>
             </div>
           </div>

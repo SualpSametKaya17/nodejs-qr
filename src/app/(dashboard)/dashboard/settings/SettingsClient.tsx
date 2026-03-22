@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { ImageUpload } from "@/components/menu/ImageUpload";
 
 interface Restaurant {
@@ -23,11 +23,23 @@ interface Restaurant {
   minPointsToRedeem: number;
 }
 
+interface PosConfig {
+  isActive: boolean;
+  testMode: boolean;
+  clientId: string;
+  storeKey: string;
+  gatewayUrl: string;
+  apiUrl: string;
+  apiUser: string;
+  apiPass: string;
+  storeType: string;
+}
+
 interface Props {
   restaurant: Restaurant;
 }
 
-type Section = "profile" | "appearance" | "loyalty" | "password";
+type Section = "profile" | "appearance" | "loyalty" | "pos" | "password";
 
 function SectionCard({
   title,
@@ -80,6 +92,23 @@ export function SettingsClient({ restaurant }: Props) {
   const [pointValueTL, setPointValueTL] = useState(String(restaurant.pointValueTL));
   const [minOrderForPoints, setMinOrderForPoints] = useState(String(restaurant.minOrderForPoints));
   const [minPointsToRedeem, setMinPointsToRedeem] = useState(String(restaurant.minPointsToRedeem));
+
+  // POS state
+  const [posLoaded, setPosLoaded] = useState(false);
+  const [pos, setPos] = useState<PosConfig>({
+    isActive: false, testMode: true,
+    clientId: "", storeKey: "", gatewayUrl: "", apiUrl: "",
+    apiUser: "", apiPass: "", storeType: "3d",
+  });
+
+  useEffect(() => {
+    if (activeSection === "pos" && !posLoaded) {
+      fetch("/api/pos-config")
+        .then((r) => r.json())
+        .then((j) => { if (j.success) setPos(j.data); })
+        .finally(() => setPosLoaded(true));
+    }
+  }, [activeSection, posLoaded]);
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -174,10 +203,24 @@ export function SettingsClient({ restaurant }: Props) {
     enterprise: "bg-yellow-100 text-yellow-700",
   };
 
+  async function handlePosSave(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    const res = await fetch("/api/pos-config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pos),
+    });
+    setSaving(false);
+    const json = await res.json();
+    showToast(json.success ? "POS ayarları kaydedildi." : json.error, json.success);
+  }
+
   const tabs: { key: Section; label: string }[] = [
     { key: "profile", label: "Profil" },
     { key: "appearance", label: "Görünüm" },
     { key: "loyalty", label: "Sadakat" },
+    { key: "pos", label: "Sanal POS" },
     { key: "password", label: "Şifre" },
   ];
 
@@ -480,6 +523,148 @@ export function SettingsClient({ restaurant }: Props) {
               </button>
             </div>
           </form>
+        </SectionCard>
+      )}
+
+      {/* Sanal POS */}
+      {activeSection === "pos" && (
+        <SectionCard
+          title="Sanal POS Entegrasyonu"
+          description="Payten (Nestpay) — Garanti, Yapı Kredi, Akbank ve diğer uyumlu bankalar"
+        >
+          {!posLoaded ? (
+            <p className="text-sm text-gray-400 py-4 text-center">Yükleniyor...</p>
+          ) : (
+            <form onSubmit={handlePosSave} className="space-y-5">
+              {/* Aktif toggle */}
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Online Ödeme</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Aktif olduğunda müşteriler sepetten kredi kartıyla ödeme yapabilir
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPos((p) => ({ ...p, isActive: !p.isActive }))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${pos.isActive ? "bg-blue-600" : "bg-gray-200"}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform ${pos.isActive ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+
+              {/* Test modu */}
+              <div className="flex items-center justify-between py-1 border-t border-gray-100 pt-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Test Modu</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Test ortamında çalış, gerçek para çekilmez</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPos((p) => ({ ...p, testMode: !p.testMode }))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${pos.testMode ? "bg-orange-500" : "bg-gray-200"}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform ${pos.testMode ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 space-y-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Bağlantı Bilgileri</p>
+
+                <Field label="Client ID">
+                  <input
+                    value={pos.clientId}
+                    onChange={(e) => setPos((p) => ({ ...p, clientId: e.target.value }))}
+                    placeholder="Bankanızdan aldığınız Client ID"
+                    className={inputCls()}
+                  />
+                </Field>
+
+                <Field label="Store Key">
+                  <input
+                    type="password"
+                    value={pos.storeKey}
+                    onChange={(e) => setPos((p) => ({ ...p, storeKey: e.target.value }))}
+                    placeholder="Store Key (gizli anahtar)"
+                    className={inputCls()}
+                  />
+                </Field>
+
+                <Field label="3D Gate URL (est3dgate)">
+                  <input
+                    value={pos.gatewayUrl}
+                    onChange={(e) => setPos((p) => ({ ...p, gatewayUrl: e.target.value }))}
+                    placeholder="https://HOST/fim/est3dgate"
+                    className={inputCls()}
+                  />
+                </Field>
+
+                <Field label="Store Type">
+                  <select
+                    value={pos.storeType}
+                    onChange={(e) => setPos((p) => ({ ...p, storeType: e.target.value }))}
+                    className={inputCls()}
+                  >
+                    <option value="3d">3d</option>
+                    <option value="3d_pay_hosting">3d_pay_hosting</option>
+                  </select>
+                </Field>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 space-y-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">API Bilgileri (Provizyon)</p>
+
+                <Field label="API URL (fim/api)">
+                  <input
+                    value={pos.apiUrl}
+                    onChange={(e) => setPos((p) => ({ ...p, apiUrl: e.target.value }))}
+                    placeholder="https://HOST/fim/api"
+                    className={inputCls()}
+                  />
+                </Field>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="API Kullanıcı Adı">
+                    <input
+                      value={pos.apiUser}
+                      onChange={(e) => setPos((p) => ({ ...p, apiUser: e.target.value }))}
+                      placeholder="API kullanıcısı"
+                      className={inputCls()}
+                    />
+                  </Field>
+                  <Field label="API Şifre">
+                    <input
+                      type="password"
+                      value={pos.apiPass}
+                      onChange={(e) => setPos((p) => ({ ...p, apiPass: e.target.value }))}
+                      placeholder="API şifresi"
+                      className={inputCls()}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700 space-y-1">
+                <p className="font-semibold">Callback URL&apos;leri</p>
+                <p className="text-xs font-mono break-all">
+                  {typeof window !== "undefined" ? window.location.origin : ""}/api/payment/response
+                </p>
+                <p className="text-xs text-blue-500 mt-1">
+                  Bu URL&apos;i banka yönetim panelinde okUrl, failUrl ve callbackUrl olarak tanımlayın.
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  {saving ? "Kaydediliyor..." : "Kaydet"}
+                </button>
+              </div>
+            </form>
+          )}
         </SectionCard>
       )}
 

@@ -62,6 +62,13 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
 
   if (!menu) notFound();
 
+  // Online ödeme aktif mi?
+  const posConfig = await prisma.posConfig.findUnique({
+    where: { restaurantId: rId },
+    select: { isActive: true },
+  });
+  const posEnabled = posConfig?.isActive ?? false;
+
   const serialized = JSON.parse(JSON.stringify(menu));
 
   return (
@@ -70,6 +77,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       restaurantId={rId}
       tableNumber={tableNumber ?? null}
       qrId={qrId ?? null}
+      posEnabled={posEnabled}
     />
   );
 }

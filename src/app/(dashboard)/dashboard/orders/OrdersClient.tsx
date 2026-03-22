@@ -51,6 +51,25 @@ const STATUS_BADGE: Record<OrderStatus, string> = {
   CANCELLED: "bg-red-100 text-red-600",
 };
 
+// Kanban kolon başlık renkleri
+const COLUMN_HEADER: Record<OrderStatus, string> = {
+  PENDING: "border-t-yellow-400 bg-yellow-50",
+  CONFIRMED: "border-t-blue-400 bg-blue-50",
+  PREPARING: "border-t-orange-400 bg-orange-50",
+  READY: "border-t-green-400 bg-green-50",
+  DELIVERED: "border-t-gray-300 bg-gray-50",
+  CANCELLED: "border-t-red-300 bg-red-50",
+};
+
+const COLUMN_TITLE_COLOR: Record<OrderStatus, string> = {
+  PENDING: "text-yellow-700",
+  CONFIRMED: "text-blue-700",
+  PREPARING: "text-orange-700",
+  READY: "text-green-700",
+  DELIVERED: "text-gray-600",
+  CANCELLED: "text-red-600",
+};
+
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   PENDING: "CONFIRMED",
   CONFIRMED: "PREPARING",
@@ -72,7 +91,7 @@ const NEXT_BTN_COLORS: Partial<Record<OrderStatus, string>> = {
   READY: "bg-gray-700 hover:bg-gray-800",
 };
 
-const FILTER_TABS: { key: OrderStatus | "ALL"; label: string }[] = [
+const MOBILE_FILTER_TABS: { key: OrderStatus | "ALL"; label: string }[] = [
   { key: "ALL", label: "Tümü" },
   { key: "PENDING", label: "Bekliyor" },
   { key: "CONFIRMED", label: "Onaylandı" },
@@ -80,6 +99,8 @@ const FILTER_TABS: { key: OrderStatus | "ALL"; label: string }[] = [
   { key: "READY", label: "Hazır" },
   { key: "DELIVERED", label: "Teslim" },
 ];
+
+const KANBAN_COLUMNS: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "READY"];
 
 function useElapsedSeconds(createdAt: string) {
   const [elapsed, setElapsed] = useState(() =>
@@ -113,17 +134,122 @@ function ElapsedTimer({ createdAt, status }: { createdAt: string; status: OrderS
       ? `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
       : `${Math.floor(elapsed / 3600)}s ${String(minutes % 60).padStart(2, "0")}dk`;
 
+  return <span className={`text-xs tabular-nums ${colorClass}`}>{formatted}</span>;
+}
+
+// Tek sipariş kartı (hem liste hem kanban için kullanılıyor)
+function OrderCard({
+  order,
+  isNew,
+  updatingId,
+  onUpdateStatus,
+}: {
+  order: Order;
+  isNew: boolean;
+  updatingId: number | null;
+  onUpdateStatus: (id: number, status: OrderStatus) => void;
+}) {
   return (
-    <span className={`text-xs tabular-nums ${colorClass}`}>{formatted}</span>
+    <div
+      className={`bg-white border border-gray-200 rounded-xl overflow-hidden transition-colors ${
+        isNew ? "border-yellow-400 ring-2 ring-yellow-100" : ""
+      }`}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-bold text-gray-900">#{order.id}</span>
+          {order.tableNumber && (
+            <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+              Masa {order.tableNumber}
+            </span>
+          )}
+          {isNew && (
+            <span className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full animate-pulse">
+              🔔 Yeni!
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <ElapsedTimer createdAt={order.createdAt} status={order.status} />
+          <span className="text-sm font-bold text-gray-900">
+            ₺{Number(order.totalAmount).toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      {/* Ürünler */}
+      <div className="px-3 py-2.5 space-y-1.5">
+        {order.items.map((item) => (
+          <div key={item.id} className="flex items-start gap-2 text-sm text-gray-700">
+            <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0 mt-0.5">
+              {item.quantity}
+            </span>
+            <div className="flex-1 min-w-0">
+              <span className="block font-medium text-gray-800 text-xs">{item.menuItem.name}</span>
+              {(item.modifiers ?? []).length > 0 && (
+                <span className="text-xs text-gray-400">
+                  {(item.modifiers ?? []).map((m) => m.name).join(", ")}
+                </span>
+              )}
+              {item.note && (
+                <span className="text-xs text-orange-500 block">Not: {item.note}</span>
+              )}
+            </div>
+            <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">
+              ₺{(Number(item.unitPrice) * item.quantity).toFixed(2)}
+            </span>
+          </div>
+        ))}
+        {order.customerNote && (
+          <p className="text-xs text-gray-400 mt-1 pt-1.5 border-t border-gray-100 italic">
+            Not: {order.customerNote}
+          </p>
+        )}
+      </div>
+
+      {/* Aksiyon butonları */}
+      {order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
+        <div className="px-3 pb-3 flex gap-1.5">
+          {NEXT_STATUS[order.status] && (
+            <button
+              onClick={() => onUpdateStatus(order.id, NEXT_STATUS[order.status]!)}
+              disabled={updatingId === order.id}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 text-white ${NEXT_BTN_COLORS[order.status]}`}
+            >
+              {updatingId === order.id ? (
+                <>
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Güncelleniyor...
+                </>
+              ) : (
+                NEXT_LABELS[order.status]
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => onUpdateStatus(order.id, "CANCELLED")}
+            disabled={updatingId === order.id}
+            className="px-3 py-2 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+          >
+            İptal
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
 export function OrdersClient({ initialOrders }: Props) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [filter, setFilter] = useState<OrderStatus | "ALL">("ALL");
+  const [mobileFilter, setMobileFilter] = useState<OrderStatus | "ALL">("ALL");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const prevOrderIdsRef = useRef<Set<number>>(new Set(initialOrders.map((o) => o.id)));
   const audioRef = useRef<AudioContext | null>(null);
 
@@ -202,8 +328,12 @@ export function OrdersClient({ initialOrders }: Props) {
     }
   }
 
-  const filtered = filter === "ALL" ? orders : orders.filter((o) => o.status === filter);
   const pendingCount = orders.filter((o) => o.status === "PENDING").length;
+  const mobileFiltered =
+    mobileFilter === "ALL" ? orders : orders.filter((o) => o.status === mobileFilter);
+  const completedOrders = orders.filter(
+    (o) => o.status === "DELIVERED" || o.status === "CANCELLED"
+  );
 
   return (
     <div className="space-y-5">
@@ -237,152 +367,212 @@ export function OrdersClient({ initialOrders }: Props) {
         </button>
       </div>
 
-      {/* Filtre sekmeleri */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-        {FILTER_TABS.map((tab) => {
-          const count =
-            tab.key === "ALL"
-              ? orders.length
-              : orders.filter((o) => o.status === tab.key).length;
+      {/* ── DESKTOP: Kanban board (lg+) ── */}
+      <div className="hidden lg:grid lg:grid-cols-4 lg:gap-4">
+        {KANBAN_COLUMNS.map((colStatus) => {
+          const colOrders = orders.filter((o) => o.status === colStatus);
           return (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                filter === tab.key
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {tab.label}
-              {count > 0 && (
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-xs ${
-                    filter === tab.key
-                      ? "bg-white/20 text-white"
-                      : "bg-gray-200 text-gray-500"
-                  }`}
-                >
-                  {count}
+            <div key={colStatus} className="flex flex-col gap-3 min-h-[200px]">
+              {/* Kolon başlığı */}
+              <div className={`border border-gray-200 border-t-4 rounded-xl px-3 py-2.5 flex items-center justify-between ${COLUMN_HEADER[colStatus]}`}>
+                <span className={`text-xs font-bold uppercase tracking-wider ${COLUMN_TITLE_COLOR[colStatus]}`}>
+                  {STATUS_LABELS[colStatus]}
                 </span>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[colStatus]}`}>
+                  {colOrders.length}
+                </span>
+              </div>
+
+              {/* Kartlar */}
+              {colOrders.length === 0 ? (
+                <div className="border border-dashed border-gray-200 rounded-xl py-8 text-center bg-white">
+                  <p className="text-xs text-gray-400">Sipariş yok</p>
+                </div>
+              ) : (
+                colOrders.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    isNew={newOrderIds.has(order.id)}
+                    updatingId={updatingId}
+                    onUpdateStatus={updateStatus}
+                  />
+                ))
               )}
-            </button>
+            </div>
           );
         })}
       </div>
 
-      {/* Sipariş listesi */}
-      {filtered.length === 0 ? (
-        <div className="bg-white border border-dashed border-gray-200 rounded-xl py-16 text-center">
-          <p className="text-gray-400 text-sm">Bu filtrede sipariş yok.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((order) => (
-            <div
-              key={order.id}
-              className={`bg-white border border-gray-200 rounded-xl overflow-hidden transition-colors ${
-                newOrderIds.has(order.id)
-                  ? "border-yellow-400 ring-2 ring-yellow-100"
-                  : ""
-              }`}
+      {/* Desktop: Teslim/İptal bölümü */}
+      {completedOrders.length > 0 && (
+        <div className="hidden lg:block">
+          <button
+            onClick={() => setShowCompleted((v) => !v)}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-3"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showCompleted ? "rotate-90" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              {/* Sipariş header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 gap-2 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-gray-900">#{order.id}</span>
-
-                  {order.tableNumber && (
-                    <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                      Masa {order.tableNumber}
-                    </span>
-                  )}
-
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[order.status]}`}>
-                    {STATUS_LABELS[order.status]}
-                  </span>
-
-                  {newOrderIds.has(order.id) && (
-                    <span className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full animate-pulse">
-                      🔔 Yeni!
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <ElapsedTimer createdAt={order.createdAt} status={order.status} />
-                  <span className="text-sm font-bold text-gray-900">
-                    ₺{Number(order.totalAmount).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Ürünler */}
-              <div className="px-4 py-3 space-y-2">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0 mt-0.5">
-                      {item.quantity}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <span className="block font-medium text-gray-800">{item.menuItem.name}</span>
-                      {(item.modifiers ?? []).length > 0 && (
-                        <span className="text-xs text-gray-400">
-                          {(item.modifiers ?? []).map((m) => m.name).join(", ")}
-                        </span>
-                      )}
-                      {item.note && (
-                        <span className="text-xs text-orange-500 block">Not: {item.note}</span>
-                      )}
-                    </div>
-                    <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">
-                      ₺{(Number(item.unitPrice) * item.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-
-                {order.customerNote && (
-                  <p className="text-xs text-gray-400 mt-1 pt-1.5 border-t border-gray-100 italic">
-                    Not: {order.customerNote}
-                  </p>
-                )}
-              </div>
-
-              {/* Aksiyon butonları */}
-              {order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
-                <div className="px-4 pb-3 flex gap-2">
-                  {NEXT_STATUS[order.status] && (
-                    <button
-                      onClick={() => updateStatus(order.id, NEXT_STATUS[order.status]!)}
-                      disabled={updatingId === order.id}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 text-white ${NEXT_BTN_COLORS[order.status]}`}
-                    >
-                      {updatingId === order.id ? (
-                        <>
-                          <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                          Güncelleniyor...
-                        </>
-                      ) : (
-                        NEXT_LABELS[order.status]
-                      )}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => updateStatus(order.id, "CANCELLED")}
-                    disabled={updatingId === order.id}
-                    className="px-3 py-2 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    İptal
-                  </button>
-                </div>
-              )}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Tamamlanan siparişler ({completedOrders.length})
+          </button>
+          {showCompleted && (
+            <div className="grid grid-cols-4 gap-4">
+              {completedOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  isNew={false}
+                  updatingId={updatingId}
+                  onUpdateStatus={updateStatus}
+                />
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
+
+      {/* ── MOBİL: Liste görünümü (lg altı) ── */}
+      <div className="lg:hidden space-y-4">
+        {/* Filtre sekmeleri */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {MOBILE_FILTER_TABS.map((tab) => {
+            const count =
+              tab.key === "ALL"
+                ? orders.length
+                : orders.filter((o) => o.status === tab.key).length;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setMobileFilter(tab.key)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  mobileFilter === tab.key
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {tab.label}
+                {count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-xs ${
+                      mobileFilter === tab.key
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {mobileFiltered.length === 0 ? (
+          <div className="bg-white border border-dashed border-gray-200 rounded-xl py-16 text-center">
+            <p className="text-gray-400 text-sm">Bu filtrede sipariş yok.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {mobileFiltered.map((order) => (
+              <div
+                key={order.id}
+                className={`bg-white border border-gray-200 rounded-xl overflow-hidden transition-colors ${
+                  newOrderIds.has(order.id) ? "border-yellow-400 ring-2 ring-yellow-100" : ""
+                }`}
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-gray-900">#{order.id}</span>
+                    {order.tableNumber && (
+                      <span className="text-xs font-medium bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                        Masa {order.tableNumber}
+                      </span>
+                    )}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[order.status]}`}>
+                      {STATUS_LABELS[order.status]}
+                    </span>
+                    {newOrderIds.has(order.id) && (
+                      <span className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full animate-pulse">
+                        🔔 Yeni!
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <ElapsedTimer createdAt={order.createdAt} status={order.status} />
+                    <span className="text-sm font-bold text-gray-900">
+                      ₺{Number(order.totalAmount).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                <div className="px-4 py-3 space-y-2">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-start gap-2 text-sm text-gray-700">
+                      <span className="w-5 h-5 rounded-md bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0 mt-0.5">
+                        {item.quantity}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="block font-medium text-gray-800">{item.menuItem.name}</span>
+                        {(item.modifiers ?? []).length > 0 && (
+                          <span className="text-xs text-gray-400">
+                            {(item.modifiers ?? []).map((m) => m.name).join(", ")}
+                          </span>
+                        )}
+                        {item.note && (
+                          <span className="text-xs text-orange-500 block">Not: {item.note}</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">
+                        ₺{(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                  {order.customerNote && (
+                    <p className="text-xs text-gray-400 mt-1 pt-1.5 border-t border-gray-100 italic">
+                      Not: {order.customerNote}
+                    </p>
+                  )}
+                </div>
+                {order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
+                  <div className="px-4 pb-3 flex gap-2">
+                    {NEXT_STATUS[order.status] && (
+                      <button
+                        onClick={() => updateStatus(order.id, NEXT_STATUS[order.status]!)}
+                        disabled={updatingId === order.id}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 text-white ${NEXT_BTN_COLORS[order.status]}`}
+                      >
+                        {updatingId === order.id ? (
+                          <>
+                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Güncelleniyor...
+                          </>
+                        ) : (
+                          NEXT_LABELS[order.status]
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => updateStatus(order.id, "CANCELLED")}
+                      disabled={updatingId === order.id}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      İptal
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -341,7 +341,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const [cartOpen, setCartOpen] = useState(false);
   const [orderNote, setOrderNote] = useState("");
   const [ordering, setOrdering] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState<{ orderId: number; pointsEarned?: number } | null>(null);
+  const [orderSuccess, setOrderSuccess] = useState<{ orderId: number; pointsEarned?: number; pointsUsed?: number } | null>(null);
   const [usePoints, setUsePoints] = useState(false);
   const catRefs = useRef<Record<number, HTMLElement | null>>({});
 
@@ -507,12 +507,19 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const cartSubtotal = cart.reduce((s, c) => s + (c.basePrice + c.modifierPrice) * c.quantity, 0);
 
   const loyalty = menu.restaurant.loyaltyEnabled;
+  // Gerçekte uygulanacak maksimum indirim (sipariş tutarını aşamaz)
   const maxPointsDiscount = customer && loyalty
     ? Math.min(customer.points * menu.restaurant.pointValueTL, cartSubtotal)
     : 0;
-  const pointsToRedeem = usePoints && customer && loyalty ? customer.points : 0;
-  const pointsDiscount = pointsToRedeem * menu.restaurant.pointValueTL;
-  const cartTotal = Math.max(0, cartSubtotal - (usePoints ? pointsDiscount : 0));
+  // Kaç puan kullanılacak (sadece gerektiği kadar)
+  const maxPointsNeeded = menu.restaurant.pointValueTL > 0
+    ? Math.ceil(cartSubtotal / menu.restaurant.pointValueTL)
+    : 0;
+  const pointsToRedeem = usePoints && customer && loyalty
+    ? Math.min(customer.points, maxPointsNeeded)
+    : 0;
+  const pointsDiscount = usePoints ? maxPointsDiscount : 0;
+  const cartTotal = cartSubtotal - pointsDiscount;
   const pointsWillEarn = loyalty
     ? Math.floor(cartTotal * menu.restaurant.pointsPerTL)
     : 0;
@@ -540,7 +547,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
       });
       const json = await res.json();
       if (json.success) {
-        setOrderSuccess({ orderId: json.data.order.id, pointsEarned: json.data.pointsEarned });
+        setOrderSuccess({ orderId: json.data.order.id, pointsEarned: json.data.pointsEarned, pointsUsed: json.data.pointsUsed });
         setCart([]);
         setCartOpen(false);
         setOrderNote("");
@@ -1137,7 +1144,7 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
                     <div>
                       <p className="text-sm font-semibold text-amber-800">⭐ Puanlarımı Kullan</p>
                       <p className="text-xs text-amber-600 mt-0.5">
-                        {customer.points} puan = {currencySymbol}{maxPointsDiscount.toFixed(2)} indirim
+                        {pointsToRedeem} puan kullanılacak → {currencySymbol}{maxPointsDiscount.toFixed(2)} indirim
                       </p>
                     </div>
                     <button
@@ -1266,7 +1273,12 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
               #{orderSuccess.orderId} numaralı siparişiniz alındı.
               {tableNumber ? ` Masa ${tableNumber} için` : ""} en kısa sürede hazırlanacak.
             </p>
-            {orderSuccess.pointsEarned && orderSuccess.pointsEarned > 0 && (
+            {(orderSuccess.pointsUsed ?? 0) > 0 && (
+              <div className="bg-green-50 rounded-xl px-4 py-3 text-sm text-green-700">
+                ✅ <span className="font-semibold">{orderSuccess.pointsUsed} puan</span> kullanıldı
+              </div>
+            )}
+            {(orderSuccess.pointsEarned ?? 0) > 0 && (
               <div className="bg-amber-50 rounded-xl px-4 py-3 text-sm text-amber-700 font-semibold">
                 ⭐ +{orderSuccess.pointsEarned} puan kazandınız!
               </div>

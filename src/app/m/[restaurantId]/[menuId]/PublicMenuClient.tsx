@@ -51,6 +51,8 @@ interface Restaurant {
   loyaltyEnabled: boolean;
   pointsPerTL: number;
   pointValueTL: number;
+  minOrderForPoints: number;
+  minPointsToRedeem: number;
 }
 
 interface Menu {
@@ -507,6 +509,10 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const cartSubtotal = cart.reduce((s, c) => s + (c.basePrice + c.modifierPrice) * c.quantity, 0);
 
   const loyalty = menu.restaurant.loyaltyEnabled;
+  // Limit kontrolleri
+  const meetsOrderMin = menu.restaurant.minOrderForPoints <= 0 || cartSubtotal >= menu.restaurant.minOrderForPoints;
+  const meetsPointsMin = !customer || menu.restaurant.minPointsToRedeem <= 0 || customer.points >= menu.restaurant.minPointsToRedeem;
+  const canUsePoints = loyalty && !!customer && meetsOrderMin && meetsPointsMin;
   // Gerçekte uygulanacak maksimum indirim (sipariş tutarını aşamaz)
   const maxPointsDiscount = customer && loyalty
     ? Math.min(customer.points * menu.restaurant.pointValueTL, cartSubtotal)
@@ -515,10 +521,10 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
   const maxPointsNeeded = menu.restaurant.pointValueTL > 0
     ? Math.ceil(cartSubtotal / menu.restaurant.pointValueTL)
     : 0;
-  const pointsToRedeem = usePoints && customer && loyalty
-    ? Math.min(customer.points, maxPointsNeeded)
+  const pointsToRedeem = usePoints && canUsePoints
+    ? Math.min(customer!.points, maxPointsNeeded)
     : 0;
-  const pointsDiscount = usePoints ? maxPointsDiscount : 0;
+  const pointsDiscount = usePoints && canUsePoints ? maxPointsDiscount : 0;
   const cartTotal = cartSubtotal - pointsDiscount;
   const pointsWillEarn = loyalty
     ? Math.floor(cartTotal * menu.restaurant.pointsPerTL)
@@ -1139,25 +1145,36 @@ export function PublicMenuClient({ menu, restaurantId, tableNumber, qrId }: Prop
             <div className="px-5 py-4 border-t border-gray-100 space-y-3 flex-shrink-0">
               {/* Puan kullan toggle */}
               {customer && loyalty && customer.points > 0 && cartSubtotal > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                <div className={`border rounded-xl p-3 space-y-2 ${canUsePoints ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-amber-800">⭐ Puanlarımı Kullan</p>
-                      <p className="text-xs text-amber-600 mt-0.5">
-                        {pointsToRedeem} puan kullanılacak → {currencySymbol}{maxPointsDiscount.toFixed(2)} indirim
-                      </p>
+                      <p className={`text-sm font-semibold ${canUsePoints ? "text-amber-800" : "text-gray-500"}`}>⭐ Puanlarımı Kullan</p>
+                      {canUsePoints ? (
+                        <p className="text-xs text-amber-600 mt-0.5">
+                          {pointsToRedeem} puan kullanılacak → {currencySymbol}{maxPointsDiscount.toFixed(2)} indirim
+                        </p>
+                      ) : !meetsOrderMin ? (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Minimum {currencySymbol}{menu.restaurant.minOrderForPoints.toFixed(2)} sipariş gerekli
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Kullanmak için en az {menu.restaurant.minPointsToRedeem} puana ihtiyaç var
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
-                      onClick={() => setUsePoints((v) => !v)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${usePoints ? "bg-amber-500" : "bg-gray-200"}`}
+                      onClick={() => canUsePoints && setUsePoints((v) => !v)}
+                      disabled={!canUsePoints}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${usePoints && canUsePoints ? "bg-amber-500" : "bg-gray-200"} ${!canUsePoints ? "opacity-40 cursor-not-allowed" : ""}`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform ${usePoints ? "translate-x-6" : "translate-x-1"}`}
+                        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform ${usePoints && canUsePoints ? "translate-x-6" : "translate-x-1"}`}
                       />
                     </button>
                   </div>
-                  {usePoints && (
+                  {usePoints && canUsePoints && (
                     <div className="flex items-center justify-between text-xs text-amber-700 border-t border-amber-200 pt-2">
                       <span>Puan indirimi</span>
                       <span className="font-semibold">-{currencySymbol}{pointsDiscount.toFixed(2)}</span>

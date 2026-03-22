@@ -43,6 +43,8 @@ export default async function SettingsPage({ searchParams }: Props) {
       loyaltyEnabled: true,
       pointsPerTL: true,
       pointValueTL: true,
+      minOrderForPoints: true,
+      minPointsToRedeem: true,
     },
   });
 

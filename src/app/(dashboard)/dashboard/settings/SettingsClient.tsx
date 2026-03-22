@@ -19,6 +19,8 @@ interface Restaurant {
   loyaltyEnabled: boolean;
   pointsPerTL: number;
   pointValueTL: number;
+  minOrderForPoints: number;
+  minPointsToRedeem: number;
 }
 
 interface Props {
@@ -76,6 +78,8 @@ export function SettingsClient({ restaurant }: Props) {
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(restaurant.loyaltyEnabled);
   const [pointsPerTL, setPointsPerTL] = useState(String(restaurant.pointsPerTL));
   const [pointValueTL, setPointValueTL] = useState(String(restaurant.pointValueTL));
+  const [minOrderForPoints, setMinOrderForPoints] = useState(String(restaurant.minOrderForPoints));
+  const [minPointsToRedeem, setMinPointsToRedeem] = useState(String(restaurant.minPointsToRedeem));
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -123,14 +127,19 @@ export function SettingsClient({ restaurant }: Props) {
     e.preventDefault();
     const pptl = parseFloat(pointsPerTL);
     const pvtl = parseFloat(pointValueTL);
+    const minOrder = parseFloat(minOrderForPoints);
+    const minPoints = parseInt(minPointsToRedeem, 10);
     if (isNaN(pptl) || pptl <= 0 || isNaN(pvtl) || pvtl <= 0) {
       showToast("Geçerli pozitif sayı girin.", false); return;
+    }
+    if (isNaN(minOrder) || minOrder < 0 || isNaN(minPoints) || minPoints < 0) {
+      showToast("Limit değerleri 0 veya daha büyük olmalıdır.", false); return;
     }
     setSaving(true);
     const res = await fetch("/api/restaurant", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ loyaltyEnabled, pointsPerTL: pptl, pointValueTL: pvtl }),
+      body: JSON.stringify({ loyaltyEnabled, pointsPerTL: pptl, pointValueTL: pvtl, minOrderForPoints: minOrder, minPointsToRedeem: minPoints }),
     });
     setSaving(false);
     const json = await res.json();
@@ -424,6 +433,40 @@ export function SettingsClient({ restaurant }: Props) {
                   </div>
                   <p className="text-xs text-gray-400 mt-1">Örn: 0.01 → 100 puan = 1 TL &nbsp;|&nbsp; 0.1 → 10 puan = 1 TL</p>
                 </Field>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Kullanım Limitleri</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Minimum sipariş tutarı (TL)">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={minOrderForPoints}
+                          onChange={(e) => setMinOrderForPoints(e.target.value)}
+                          className={inputCls()}
+                        />
+                        <span className="text-sm text-gray-500 whitespace-nowrap">TL</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">0 = limitsiz</p>
+                    </Field>
+                    <Field label="Minimum puan bakiyesi">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={minPointsToRedeem}
+                          onChange={(e) => setMinPointsToRedeem(e.target.value)}
+                          className={inputCls()}
+                        />
+                        <span className="text-sm text-gray-500 whitespace-nowrap">puan</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">0 = limitsiz</p>
+                    </Field>
+                  </div>
+                </div>
               </>
             )}
 

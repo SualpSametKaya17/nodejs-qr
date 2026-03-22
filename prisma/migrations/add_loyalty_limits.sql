@@ -1,0 +1,3 @@
+ALTER TABLE restaurants
+  ADD COLUMN minOrderForPoints DOUBLE NOT NULL DEFAULT 0,
+  ADD COLUMN minPointsToRedeem INT NOT NULL DEFAULT 0;

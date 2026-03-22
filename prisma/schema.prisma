@@ -48,6 +48,8 @@ model Restaurant {
   loyaltyEnabled     Boolean  @default(false)
   pointsPerTL        Float    @default(1)
   pointValueTL       Float    @default(0.01)
+  minOrderForPoints  Float    @default(0)
+  minPointsToRedeem  Int      @default(0)
   subscriptionPlan   String   @default("free") @db.VarChar(50)
   subscriptionStatus String   @default("active") @db.VarChar(50)
   isActive           Boolean  @default(true)

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     const restaurant = await prisma.restaurant.findUnique({
       where: { id: restaurantId, isActive: true },
-      select: { id: true, loyaltyEnabled: true, pointsPerTL: true, pointValueTL: true },
+      select: { id: true, loyaltyEnabled: true, pointsPerTL: true, pointValueTL: true, minOrderForPoints: true, minPointsToRedeem: true },
     });
     if (!restaurant) {
       return NextResponse.json<ApiResponse>({ success: false, error: "Restoran bulunamadı." }, { status: 404 });
@@ -68,10 +68,17 @@ export async function POST(req: NextRequest) {
         select: { id: true, points: true },
       });
       if (customer && customer.points > 0) {
-        // Siparişi sıfırlamak için gereken maksimum puan miktarı
-        const maxPointsNeeded = Math.ceil(subtotal / restaurant.pointValueTL);
-        pointsUsed = Math.min(pointsToRedeem, customer.points, maxPointsNeeded);
-        discount = Math.min(pointsUsed * restaurant.pointValueTL, subtotal);
+        // Minimum sipariş tutarı kontrolü
+        const meetsOrderMin = restaurant.minOrderForPoints <= 0 || subtotal >= restaurant.minOrderForPoints;
+        // Minimum puan bakiyesi kontrolü
+        const meetsPointsMin = restaurant.minPointsToRedeem <= 0 || customer.points >= restaurant.minPointsToRedeem;
+
+        if (meetsOrderMin && meetsPointsMin) {
+          // Siparişi sıfırlamak için gereken maksimum puan miktarı
+          const maxPointsNeeded = Math.ceil(subtotal / restaurant.pointValueTL);
+          pointsUsed = Math.min(pointsToRedeem, customer.points, maxPointsNeeded);
+          discount = Math.min(pointsUsed * restaurant.pointValueTL, subtotal);
+        }
       }
     }
 

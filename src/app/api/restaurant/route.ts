@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest) {
       "name", "logoUrl", "primaryColor", "menuStyle",
       "address", "phone", "currency", "language",
       "loyaltyEnabled", "pointsPerTL", "pointValueTL",
+      "minOrderForPoints", "minPointsToRedeem",
     ] as const;
 
     const data: Record<string, unknown> = {};
@@ -41,6 +42,7 @@ export async function PATCH(req: NextRequest) {
         address: true, phone: true, currency: true, language: true,
         subscriptionPlan: true, subscriptionStatus: true,
         loyaltyEnabled: true, pointsPerTL: true, pointValueTL: true,
+        minOrderForPoints: true, minPointsToRedeem: true,
       },
     });
 

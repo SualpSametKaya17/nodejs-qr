@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     const ext = ALLOWED[file.type];
     const filename = `${restaurantId}_${randomUUID()}.${ext}`;
-    const uploadDir = join(process.cwd(), "public", "uploads");
+    const uploadDir = join(process.cwd(), "uploads");
 
     await mkdir(uploadDir, { recursive: true });
     await writeFile(join(uploadDir, filename), Buffer.from(await file.arrayBuffer()));

@@ -12,6 +12,19 @@ const nextConfig: NextConfig = {
       allowedOrigins: ["localhost:3000", "qrmenu.triposltd.com"],
     },
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "X-Accel-Buffering",
+            value: "no",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
